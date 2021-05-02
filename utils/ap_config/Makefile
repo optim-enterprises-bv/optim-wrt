@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ap_config
 PKG_VERSION:=2021-03-21
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/APClient
@@ -18,6 +18,10 @@ define Package/ap_config
   CATEGORY:=Utilities
   TITLE:=ap_config
   DEPENDS:=+libaxl +libopenssl +libmariadbclient
+endef
+
+define Package/base-files/conffiles
+/etc/apconfig/
 endef
 
 define Package/ap_config/install

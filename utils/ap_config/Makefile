@@ -32,7 +32,7 @@ define Package/ap_config/install
 	install -d -m0700 $(1)/etc/apconfig
 	$(INSTALL_CONF) $(PKG_BUILD_DIR)/conf/ac_client.conf $(1)/etc/apconfig
 	install -d -m0700 $(1)/etc/apconfig/CA
-	$(INSTALL_CONF) ./files/rootCA.crt ./files/client.{crt,key} $(1)/etc/apconfig/CA
+	$(INSTALL_CONF) ./files/ca.crt ./files/client.{crt,key} $(1)/etc/apconfig/CA
 endef
 
 $(eval $(call BuildPackage,ap_config))

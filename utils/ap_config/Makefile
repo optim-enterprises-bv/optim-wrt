@@ -25,7 +25,7 @@ endef
 
 define Package/ap_config/install
 	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ac_client $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/Obj/ac_client $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/ap_config.init $(1)/etc/init.d/ap_config
 	install -d -m0700 $(1)/etc/apconfig

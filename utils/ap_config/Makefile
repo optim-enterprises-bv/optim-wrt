@@ -6,8 +6,7 @@ PKG_RELEASE:=3
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=git@github.com:optim-enterprises-bv/APClient.git
-PKG_SOURCE_VERSION:=036e5fed4376a0acb6630c7017dc8353c4c6dc42
-
+PKG_SOURCE_VERSION:=9b643fd18c433667adb83a0be819355e1c6ccba8
 PKG_BUILD_PARALLEL:=1
 PKG_INSTALL:=1
 
@@ -26,7 +25,7 @@ endef
 
 define Package/ap_config/install
 	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ac_client $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/Obj/ac_client $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/ap_config.init $(1)/etc/init.d/ap_config
 	install -d -m0700 $(1)/etc/apconfig

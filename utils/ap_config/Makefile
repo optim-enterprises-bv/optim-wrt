@@ -5,8 +5,8 @@ PKG_VERSION:=2021-06-2
 PKG_RELEASE:=3
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/APClient
-PKG_SOURCE_VERSION:=5ea540fd927d9534f98c058619baecefa394187a
+PKG_SOURCE_URL:=git@github.com:optim-enterprises-bv/APClient.git
+PKG_SOURCE_VERSION:=036e5fed4376a0acb6630c7017dc8353c4c6dc42
 
 PKG_BUILD_PARALLEL:=1
 PKG_INSTALL:=1

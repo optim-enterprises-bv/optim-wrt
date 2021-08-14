@@ -4,9 +4,6 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
-#PKG_HASH:=9a94e6073f5e171c9ba6c3f5ca291bdae688c8e26fb586c3df4302204af77e86
-#PKG_SOURCE_URL:=https://codeload.github.com/tailscale/tailscale/tar.gz/v$(PKG_VERSION)?
-#PKG_SOURCE:=tailscale-$(PKG_VERSION).tar.gz
 
 include $(TOPDIR)/rules.mk
 
@@ -14,9 +11,9 @@ PKG_NAME:=tailscale
 PKG_VERSION:=1.12.1
 PKG_RELEASE:=1
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/tailscale/tailscale.git
-PKG_HASH:=d2d55bd63cfafe2234764856c35018f07b5f82b6
+PKG_SOURCE:=tailscale-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://codeload.github.com/tailscale/tailscale/tar.gz/v$(PKG_VERSION)?
+PKG_HASH:=9a94e6073f5e171c9ba6c3f5ca291bdae688c8e26fb586c3df4302204af77e86
 
 PKG_MAINTAINER:=Jan Pavlinec <jan.pavlinec1@gmail.com>
 PKG_LICENSE:=BSD-3-Clause

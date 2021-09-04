@@ -16,7 +16,7 @@ define Package/ap_config
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=ap_config
-  DEPENDS:=+libaxl +libopenssl +libmariadbclient +libubox
+  DEPENDS:=+libaxl +libopenssl +libmariadbclient +libubox +libxml2 +libcurl
 endef
 
 define Package/base-files/conffiles

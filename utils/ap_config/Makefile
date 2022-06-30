@@ -6,7 +6,7 @@ PKG_RELEASE:=4
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=git@github.com:optim-enterprises-bv/APClient.git
-PKG_SOURCE_VERSION:=d4fac80c4a2fe6d4dd6ecbf193b9c60d06e14bcc
+PKG_SOURCE_VERSION:=d33feed4ade17a2481bc7d56a0ebe790bea52295
 PKG_BUILD_PARALLEL:=1
 PKG_INSTALL:=1
 

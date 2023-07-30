@@ -2,6 +2,15 @@ Index: parodus-1.1.5/CMakeLists.txt
 ===================================================================
 --- parodus-1.1.5.orig/CMakeLists.txt
 +++ parodus-1.1.5/CMakeLists.txt
+@@ -59,7 +59,7 @@ add_definitions("-DGIT_COMMIT_TAG=\"${GI
+ add_definitions(-std=c99)
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_GNU_SOURCE -DNOPOLL_LOGGER ")
+ 
+-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -Wno-missing-field-initializers")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -Wno-missing-field-initializers -Wno-error=implicit-function-declaration -Wno-error=address")
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall")
+ 
+ 
 @@ -90,6 +90,7 @@ ExternalProject_Add(nopoll
      CONFIGURE_COMMAND COMMAND <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
                                                       --includedir=${INCLUDE_DIR}
@@ -33,3 +42,25 @@ Index: parodus-1.1.5/CMakeLists.txt
  # cimplog external dependency
  #-------------------------------------------------------------------------------
  ExternalProject_Add(cimplog
+@@ -202,15 +199,12 @@ endif (ENABLE_SESHAT)
+ 
+ # libcjwt external dependency
+ #-------------------------------------------------------------------------------
+-ExternalProject_Add(cjwt
+-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cjwt
+-    GIT_REPOSITORY https://github.com/Comcast/cjwt.git
+-    GIT_TAG "1b023c41bb2d6dbbf493c202ed81f06c84d5b51b"
+-    #GIT_TAG "1.0.1"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+-)
+-add_library(libcjwt STATIC SHARED IMPORTED)
+-add_dependencies(libcjwt cjwt)
++find_library(LIBCJWT_LIBRARY NAMES libcjwt.so PATHS ${LIBRARY_DIR} ${LIBRARY_DIR64})
++
++if (NOT LIBCJWT_LIBRARY)
++    message(FATAL_ERROR "libcjwt not found")
++endif (NOT LIBCJWT_LIBRARY)
++
+ 
+ if (FEATURE_DNS_QUERY)
+ # libucresolv external dependency

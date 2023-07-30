@@ -19,7 +19,7 @@ define Package/cjwt
 	SECTION:=libs
 	CATEGORY:=Libraries
 	TITLE:=A c jwt implementation
-	DEPENDS:= +cJSON +openssl +trower-base64
+	DEPENDS:= +cJSON +libopenssl +trower-base64
 	URL:=https://github.com/xmidt-org/cjwt
 endef
 
@@ -28,8 +28,8 @@ define Package/cjwt/description
 endef
 
 define Build/InstallDev
-	$(INSTALL_DIR) $(1)/usr/include
-	$(CP) $(PKG_INSTALL_DIR)/usr/include/cjwt/* $(1)/usr/include
+	$(INSTALL_DIR) $(1)/usr/include/cjwt
+	$(CP) $(PKG_INSTALL_DIR)/usr/include/cjwt/* $(1)/usr/include/cjwt
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libcjwt.so* $(1)/usr/lib
 endef

@@ -15,7 +15,6 @@ PKG_LICENSE_FILES:=COPYING
 CMAKE_INSTALL:=1
 
 CMAKE_BINARY_SUBDIR:=build
-# PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
@@ -24,7 +23,7 @@ define Package/parodus
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=C implementation of the XMiDT client coordinator
-  DEPENDS:= +libnopoll
+  DEPENDS:= +libcurl +mpack +cutils +cjwt
   URL:=https://github.com/xmidt-org/parodus
 endef
 

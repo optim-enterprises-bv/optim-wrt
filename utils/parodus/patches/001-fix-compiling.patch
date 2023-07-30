@@ -1,0 +1,35 @@
+Index: parodus-1.1.5/CMakeLists.txt
+===================================================================
+--- parodus-1.1.5.orig/CMakeLists.txt
++++ parodus-1.1.5/CMakeLists.txt
+@@ -90,6 +90,7 @@ ExternalProject_Add(nopoll
+     CONFIGURE_COMMAND COMMAND <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
+                                                      --includedir=${INCLUDE_DIR}
+                                                      --libdir=${LIBRARY_DIR}
++                                                     CFLAGS=-Wno-error=int-to-pointer-cast
+                                                      ${CUSTOM_HOST}
+     BUILD_IN_SOURCE 1
+ )
+@@ -136,18 +137,14 @@ add_library(libmsgpack STATIC SHARED IMP
+ add_dependencies(libmsgpack msgpack)
+ 
+ 
+-# curl external dependency
++# Find libcurl
+ #-------------------------------------------------------------------------------
+-ExternalProject_Add(curl
+-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/curl
+-    GIT_REPOSITORY https://github.com/curl/curl.git
+-    GIT_TAG "curl-7_63_0"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+-)
++find_package(CURL REQUIRED)
++include_directories(${CURL_INCLUDE_DIRS})
++
+ add_library(libcurl STATIC SHARED IMPORTED)
+ add_dependencies(libcurl curl)
+ 
+-
+ # cimplog external dependency
+ #-------------------------------------------------------------------------------
+ ExternalProject_Add(cimplog

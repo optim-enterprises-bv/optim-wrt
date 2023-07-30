@@ -28,8 +28,8 @@ define Package/trower-base64/description
 endef
 
 define Build/InstallDev
-	$(INSTALL_DIR) $(1)/usr/include/trower-base64
-	$(CP) $(PKG_INSTALL_DIR)/usr/include/trower-base64/* $(1)/usr/include/trower-base64
+	$(INSTALL_DIR) $(1)/usr/include
+	$(CP) $(PKG_INSTALL_DIR)/usr/include/trower-base64/* $(1)/usr/include
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libtrower-base64.so* $(1)/usr/lib
 endef

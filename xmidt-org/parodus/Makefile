@@ -20,20 +20,21 @@ include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
 define Package/parodus
-  SECTION:=utils
-  CATEGORY:=Utilities
-  TITLE:=C implementation of the XMiDT client coordinator
-  DEPENDS:= +libcurl +ludocode-mpack +msgpack-c +cutils +cjwt +cJSON +wrp-c +trower-base64 \
-    +xmidt-nopoll +cimplog +cutils
-  URL:=https://github.com/xmidt-org/parodus
+	SECTION:=utils
+	CATEGORY:=Utilities
+	TITLE:=C implementation of the XMiDT client coordinator
+	DEPENDS:= +libcurl +cutils +cjwt +cJSON +wrp-c +trower-base64 \
+		+xmidt-nopoll +cimplog +cutils +nanomsg +msgpack-c +libuuid
+	URL:=https://github.com/xmidt-org/parodus
 endef
 
 define Package/parodus/description
-  C implementation of the XMiDT client coordinator
+	C implementation of the XMiDT client coordinator
 endef
 
 define Package/parodus/install
-
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/parodus $(1)/usr/bin
 endef
 
 $(eval $(call BuildPackage,parodus))

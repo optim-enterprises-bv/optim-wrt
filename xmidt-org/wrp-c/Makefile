@@ -31,6 +31,14 @@ define Package/ludocode-mpack
 	URL:=https://github.com/ludocode/mpack
 endef
 
+define Package/cutils
+	SECTION:=libs
+	CATEGORY:=Libraries
+	TITLE:=Common functions used in the xmidt-org programs.
+	DEPENDS:=
+	URL:=https://github.com/xmidt-org/cutils
+endef
+
 define Package/wrp-c/description
 	C implementation of the Web Routing Protocol
 endef
@@ -39,12 +47,21 @@ define Package/libmpack/description
 	MPack - A C encoder/decoder for the MessagePack serialization format / msgpack.org[C]
 endef
 
+define Package/cutils/description
+	Common functions used in the xmidt-org programs.
+endef
+
 define Build/InstallDev
+	$(INSTALL_DIR) $(1)/usr/include/cutils
+	$(CP) $(PKG_INSTALL_DIR)/usr/include/cutils/* $(1)/usr/include/cutils
 	$(INSTALL_DIR) $(1)/usr/include/wrp-c
 	$(CP) $(PKG_INSTALL_DIR)/usr/include/wrp-c/* $(1)/usr/include/wrp-c
+	$(INSTALL_DIR) $(1)/usr/include
+	$(CP) $(PKG_INSTALL_DIR)/usr/include/mpack.h $(1)/usr/include
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libmpack.so* $(1)/usr/lib
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libwrp-c.so* $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libcutils.so* $(1)/usr/lib
 	$(INSTALL_DIR) $(1)/usr/lib/pkgconfig
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/pkgconfig/mpack.pc $(1)/usr/lib/pkgconfig
 endef
@@ -59,6 +76,12 @@ define Package/wrp-c/install
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libwrp-c.so* $(1)/usr/lib
 endef
 
+define Package/cutils/install
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libcutils.so* $(1)/usr/lib
+endef
+
 $(eval $(call BuildPackage,wrp-c))
+$(eval $(call BuildPackage,cutils))
 $(eval $(call BuildPackage,ludocode-mpack))
 

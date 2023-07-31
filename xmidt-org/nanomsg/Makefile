@@ -6,7 +6,7 @@ PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/nanomsg/${PKG_NAME}/tar.gz/$(PKG_VERSION)?
-PKG_HASH:=skip
+PKG_HASH:=6ef7282e833df6a364f3617692ef21e59d5c4878acea4f2d7d36e21c8858de67
 
 PKG_MAINTAINER:=HaiBac <mail@bacnh.com>
 PKG_LICENSE:=GPL-3.0-only

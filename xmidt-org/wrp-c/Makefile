@@ -6,7 +6,7 @@ PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/xmidt-org/${PKG_NAME}/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=skip
+PKG_HASH:=c04f4afc1fa8213e4877ae2547798202db72c18a3b8c982072e23e8cf542a45d
 
 PKG_MAINTAINER:=HaiBac <mail@bacnh.com>
 PKG_LICENSE:=GPL-3.0-only

@@ -13,7 +13,7 @@ PKG_RELEASE:=2
 
 PKG_SOURCE_URL:=https://codeload.github.com/xmidt-org/nopoll/tar.gz/$(PKG_VERSION)?
 PKG_SOURCE:=nopoll-$(PKG_VERSION).tar.gz
-PKG_HASH:=skip
+PKG_HASH:=daa8f8b6eb99210df5a0323bdbab74bfc73700126a47ae47c2bcd21ee6405abb
 PKG_BUILD_DIR:=$(BUILD_DIR)/nopoll-$(PKG_VERSION)
 
 PKG_MAINTAINER:=John Clark <inindev@gmail.com>

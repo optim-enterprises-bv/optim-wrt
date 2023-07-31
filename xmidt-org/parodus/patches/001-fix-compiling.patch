@@ -21,7 +21,7 @@ Index: parodus-1.1.5/CMakeLists.txt
  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall")
  
  
-@@ -71,15 +74,10 @@ if (NOT BUILD_YOCTO)
+@@ -71,113 +74,48 @@ if (NOT BUILD_YOCTO)
  
  # base64 external dependency
  #-------------------------------------------------------------------------------
@@ -41,18 +41,37 @@ Index: parodus-1.1.5/CMakeLists.txt
  
  # nopoll external dependency
  #-------------------------------------------------------------------------------
-@@ -90,6 +88,7 @@ ExternalProject_Add(nopoll
-     CONFIGURE_COMMAND COMMAND <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
-                                                      --includedir=${INCLUDE_DIR}
-                                                      --libdir=${LIBRARY_DIR}
-+                                                     CFLAGS=-Wno-error=int-to-pointer-cast
-                                                      ${CUSTOM_HOST}
-     BUILD_IN_SOURCE 1
- )
-@@ -109,45 +108,22 @@ add_library(libnanomsg STATIC SHARED IMP
- add_dependencies(libnanomsg nanomsg)
+-ExternalProject_Add(nopoll
+-    PREFIX ${PREFIX_DIR}/nopoll
+-    GIT_REPOSITORY https://github.com/Comcast/nopoll.git
+-    GIT_TAG "1.0.2"
+-    CONFIGURE_COMMAND COMMAND <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
+-                                                     --includedir=${INCLUDE_DIR}
+-                                                     --libdir=${LIBRARY_DIR}
+-                                                     ${CUSTOM_HOST}
+-    BUILD_IN_SOURCE 1
+-)
+-add_library(libnopoll STATIC SHARED IMPORTED)
+-add_dependencies(libnopoll nopoll)
+-
++find_library(LIBNOPOLL_LIBRARY NAMES libnopoll.so)
  
+ # nanoMsg external dependency
+ #-------------------------------------------------------------------------------
+-ExternalProject_Add(nanomsg
+-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/nanomsg
+-    GIT_REPOSITORY https://github.com/nanomsg/nanomsg.git
+-    GIT_TAG "1.1.4"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+-)
+-add_library(libnanomsg STATIC SHARED IMPORTED)
+-add_dependencies(libnanomsg nanomsg)
++find_library(LIBNANOMSG_LIBRARY NAMES libnanomsg.so)
++if (NOT LIBNANOMSG_LIBRARY)
++    message(FATAL_ERROR "libnanomsg not found")
++endif (NOT LIBNANOMSG_LIBRARY)
  
+-
 -# cJSON external dependency
 +# Find cJSON package with pkgConfig
  #-------------------------------------------------------------------------------
@@ -80,9 +99,9 @@ Index: parodus-1.1.5/CMakeLists.txt
 -)
 -add_library(libmsgpack STATIC SHARED IMPORTED)
 -add_dependencies(libmsgpack msgpack)
-+find_library(LIBMSGPACK_LIBRARY NAMES libmsgpackc.so})
- 
 -
++find_library(LIBMSGPACK_LIBRARY NAMES libmsgpackc.so)
+ 
 -# curl external dependency
 +# Find libcurl
  #-------------------------------------------------------------------------------
@@ -101,8 +120,16 @@ Index: parodus-1.1.5/CMakeLists.txt
 -
  # cimplog external dependency
  #-------------------------------------------------------------------------------
- ExternalProject_Add(cimplog
-@@ -162,22 +138,10 @@ add_dependencies(libcimplog cimplog)
+-ExternalProject_Add(cimplog
+-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cimplog
+-    GIT_REPOSITORY https://github.com/Comcast/cimplog.git
+-    GIT_TAG "1.0.2"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+-)
+-add_library(libcimplog STATIC SHARED IMPORTED)
+-add_dependencies(libcimplog cimplog)
+-
++find_library(LIBCIMPLOG_LIBRARY NAMES libcimplog.so)
  
  # wrp-c external dependency
  #-------------------------------------------------------------------------------
@@ -129,7 +156,7 @@ Index: parodus-1.1.5/CMakeLists.txt
  
  if (ENABLE_SESHAT)
  # libseshat external dependency
-@@ -202,15 +166,12 @@ endif (ENABLE_SESHAT)
+@@ -202,15 +140,12 @@ endif (ENABLE_SESHAT)
  
  # libcjwt external dependency
  #-------------------------------------------------------------------------------
@@ -151,3 +178,16 @@ Index: parodus-1.1.5/CMakeLists.txt
  
  if (FEATURE_DNS_QUERY)
  # libucresolv external dependency
+Index: parodus-1.1.5/src/CMakeLists.txt
+===================================================================
+--- parodus-1.1.5.orig/src/CMakeLists.txt
++++ parodus-1.1.5/src/CMakeLists.txt
+@@ -29,7 +29,7 @@ add_executable(parodus ${SOURCES})
+ target_link_libraries (parodus
+     ${CMAKE_THREAD_LIBS_INIT}
+     -lwrp-c
+-    -lmsgpackc
++    -lmsgpack-c
+     -lcurl
+     -ltrower-base64
+     -lnopoll

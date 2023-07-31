@@ -2,7 +2,17 @@ Index: parodus-1.1.5/CMakeLists.txt
 ===================================================================
 --- parodus-1.1.5.orig/CMakeLists.txt
 +++ parodus-1.1.5/CMakeLists.txt
-@@ -59,7 +59,7 @@ add_definitions("-DGIT_COMMIT_TAG=\"${GI
+@@ -43,6 +43,9 @@ include_directories(${INCLUDE_DIR}
+                     ${INCLUDE_DIR}/cjwt
+ 					)	
+ 
++# Find pkgconfig
++find_package(PkgConfig REQUIRED)
++
+ # Get git commit hash 
+ #-------------------------------------------------------------------------------
+ execute_process(
+@@ -59,7 +62,7 @@ add_definitions("-DGIT_COMMIT_TAG=\"${GI
  add_definitions(-std=c99)
  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_GNU_SOURCE -DNOPOLL_LOGGER ")
  
@@ -11,7 +21,27 @@ Index: parodus-1.1.5/CMakeLists.txt
  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall")
  
  
-@@ -90,6 +90,7 @@ ExternalProject_Add(nopoll
+@@ -71,15 +74,10 @@ if (NOT BUILD_YOCTO)
+ 
+ # base64 external dependency
+ #-------------------------------------------------------------------------------
+-ExternalProject_Add(trower-base64
+-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/trower-base64
+-    GIT_REPOSITORY https://github.com/Comcast/trower-base64.git
+-    GIT_TAG "v1.1.1"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+-)
+-add_library(libtrower-base64 STATIC SHARED IMPORTED)
+-add_dependencies(libtrower-base64 trower-base64)
+-
++find_library(LIBBASE64_LIBRARY NAMES libtrower-base64.so)
++if (NOT LIBBASE64_LIBRARY)
++    message(FATAL_ERROR "libtrower-base64 not found")
++endif (NOT LIBBASE64_LIBRARY)
+ 
+ # nopoll external dependency
+ #-------------------------------------------------------------------------------
+@@ -90,6 +88,7 @@ ExternalProject_Add(nopoll
      CONFIGURE_COMMAND COMMAND <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
                                                       --includedir=${INCLUDE_DIR}
                                                       --libdir=${LIBRARY_DIR}
@@ -19,10 +49,40 @@ Index: parodus-1.1.5/CMakeLists.txt
                                                       ${CUSTOM_HOST}
      BUILD_IN_SOURCE 1
  )
-@@ -136,18 +137,14 @@ add_library(libmsgpack STATIC SHARED IMP
- add_dependencies(libmsgpack msgpack)
+@@ -109,45 +108,22 @@ add_library(libnanomsg STATIC SHARED IMP
+ add_dependencies(libnanomsg nanomsg)
  
  
+-# cJSON external dependency
++# Find cJSON package with pkgConfig
+ #-------------------------------------------------------------------------------
+-ExternalProject_Add(cJSON
+-    #PREFIX ${PREFIX_DIR}/cJSON
+-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cJSON
+-    GIT_REPOSITORY https://github.com/DaveGamble/cJSON.git
+-    GIT_TAG "v1.7.8"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+-)
+-add_library(libcJSON STATIC SHARED IMPORTED)
+-add_dependencies(libcJSON cJSON)
+-
++pkg_check_modules(CJSON REQUIRED libcjson)
+ 
+ # msgpack-c external dependency
+ #-------------------------------------------------------------------------------
+-ExternalProject_Add(msgpack
+-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/msgpack
+-    GIT_REPOSITORY https://github.com/msgpack/msgpack-c.git
+-    GIT_TAG "cpp-3.1.1"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+-                  -DMSGPACK_ENABLE_CXX=OFF
+-                  -DMSGPACK_BUILD_EXAMPLES=OFF
+-)
+-add_library(libmsgpack STATIC SHARED IMPORTED)
+-add_dependencies(libmsgpack msgpack)
++find_library(LIBMSGPACK_LIBRARY NAMES libmsgpackc.so})
+ 
+-
 -# curl external dependency
 +# Find libcurl
  #-------------------------------------------------------------------------------
@@ -42,7 +102,34 @@ Index: parodus-1.1.5/CMakeLists.txt
  # cimplog external dependency
  #-------------------------------------------------------------------------------
  ExternalProject_Add(cimplog
-@@ -202,15 +199,12 @@ endif (ENABLE_SESHAT)
+@@ -162,22 +138,10 @@ add_dependencies(libcimplog cimplog)
+ 
+ # wrp-c external dependency
+ #-------------------------------------------------------------------------------
+-ExternalProject_Add(wrp-c
+-	DEPENDS trower-base64 msgpack cimplog
+-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/wrp-c
+-    GIT_REPOSITORY https://github.com/Comcast/wrp-c.git
+-    GIT_TAG "1.0.1"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+-                  -DMSGPACK_ENABLE_CXX=OFF
+-                  -DMSGPACK_BUILD_EXAMPLES=OFF
+-                  -DBUILD_TESTING=OFF
+-                  -DMAIN_PROJ_BUILD=ON
+-                  -DMAIN_PROJ_LIB_PATH=${LIBRARY_DIR}
+-    		  -DMAIN_PROJ_INCLUDE_PATH=${INCLUDE_DIR}
+-)
+-add_library(libwrp-c STATIC SHARED IMPORTED)
+-add_dependencies(libwrp-c wrp-c)
+-
++find_library(LIBWRP_C_LIBRARY NAMES libwrp-c.so)
++if (NOT LIBWRP_C_LIBRARY)
++    message(FATAL_ERROR "libwrp-c not found")
++endif (NOT LIBWRP_C_LIBRARY)
+ 
+ if (ENABLE_SESHAT)
+ # libseshat external dependency
+@@ -202,15 +166,12 @@ endif (ENABLE_SESHAT)
  
  # libcjwt external dependency
  #-------------------------------------------------------------------------------

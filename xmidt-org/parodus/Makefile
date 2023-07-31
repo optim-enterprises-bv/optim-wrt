@@ -23,7 +23,8 @@ define Package/parodus
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=C implementation of the XMiDT client coordinator
-  DEPENDS:= +libcurl +mpack +cutils +cjwt +cJSON
+  DEPENDS:= +libcurl +ludocode-mpack +cutils +cjwt +cJSON +wrp-c +msgpack-c +trower-base64 \
+    +libnopoll +cimplog
   URL:=https://github.com/xmidt-org/parodus
 endef
 

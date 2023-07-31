@@ -169,7 +169,7 @@ Index: parodus-1.1.5/CMakeLists.txt
 -)
 -add_library(libcjwt STATIC SHARED IMPORTED)
 -add_dependencies(libcjwt cjwt)
-+find_library(LIBCJWT_LIBRARY NAMES libcjwt.so PATHS ${LIBRARY_DIR} ${LIBRARY_DIR64})
++find_library(LIBCJWT_LIBRARY NAMES libcjwt.so)
 +
 +if (NOT LIBCJWT_LIBRARY)
 +    message(FATAL_ERROR "libcjwt not found")

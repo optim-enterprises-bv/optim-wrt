@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=parodus
-PKG_VERSION:=1.1.5
+PKG_VERSION:=2.0.0
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/xmidt-org/parodus/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=8b16ab1a53b889c66194f54b06da3f77bc776a172e03b76a65042514bdbdb148
+PKG_SOURCE_URL:=https://codeload.github.com/xmidt-org/parodus/tar.gz/$(PKG_VERSION)?
+PKG_HASH:=7dfb4867116e621ba3e775c97d466e44ddc2a42b95a443a756d59c06c239aa09
 
 PKG_MAINTAINER:=HaiBac <mail@bacnh.com>
 PKG_LICENSE:=GPL-3.0-only

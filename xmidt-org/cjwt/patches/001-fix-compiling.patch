@@ -1,0 +1,54 @@
+Index: cjwt-1b023c41/src/cjwt.h
+===================================================================
+--- cjwt-1b023c41.orig/src/cjwt.h
++++ cjwt-1b023c41/src/cjwt.h
+@@ -16,7 +16,7 @@
+  */
+ #include <stdint.h>
+ #include <time.h>
+-#include <cJSON.h>
++#include <cjson/cJSON.h>
+ 
+ /*----------------------------------------------------------------------------*/
+ /*                                   Macros                                   */
+Index: cjwt-1b023c41/CMakeLists.txt
+===================================================================
+--- cjwt-1b023c41.orig/CMakeLists.txt
++++ cjwt-1b023c41/CMakeLists.txt
+@@ -43,29 +43,18 @@ endif()
+ )
+ link_directories ( ${LIBRARY_DIR} )
+ 
++find_package(PkgConfig REQUIRED)
++
+ if (NOT BUILD_YOCTO)
+ 
+ # base64 external dependency
+-ExternalProject_Add(trower-base64
+-    PREFIX ${PREFIX_DIR}/trower-base64
+-    GIT_REPOSITORY https://github.com/Comcast/trower-base64.git
+-    GIT_TAG "fbb9440ae2bc1118866baefcea7ff814f16613dd"
+-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF)
+-add_library(libtrower-base64 STATIC SHARED IMPORTED)
+-add_dependencies(libtrower-base64 trower-base64)
++find_library(LIBBASE64_LIBRARY NAMES libtrower-base64.so)
++if (NOT LIBBASE64_LIBRARY)
++    message(FATAL_ERROR "libtrower-base64 not found")
++endif (NOT LIBBASE64_LIBRARY)
+ 
+ # cJSON external dependency
+-ExternalProject_Add(cJSON
+-    PREFIX ${PREFIX_DIR}/cJSON
+-    GIT_REPOSITORY https://github.com/DaveGamble/cJSON.git
+-    GIT_TAG "aafb64a1c549b7b927e339df6d35b1d5059dc235"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+-    CMAKE_ARGS += -DCMAKE_MACOSX_RPATH=true
+-endif()
+-)
+-add_library(libcjson STATIC IMPORTED)
+-add_dependencies(libcjson cjson)
++pkg_check_modules(CJSON REQUIRED libcjson)
+ 
+ endif ()
+ 

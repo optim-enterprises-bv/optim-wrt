@@ -1,27 +1,37 @@
-Index: parodus-1.1.5/CMakeLists.txt
+Index: parodus-2.0.0/src/CMakeLists.txt
 ===================================================================
---- parodus-1.1.5.orig/CMakeLists.txt
-+++ parodus-1.1.5/CMakeLists.txt
-@@ -43,6 +43,9 @@ include_directories(${INCLUDE_DIR}
-                     ${INCLUDE_DIR}/cjwt
- 					)	
- 
-+# Find pkgconfig
-+find_package(PkgConfig REQUIRED)
-+
- # Get git commit hash 
- #-------------------------------------------------------------------------------
- execute_process(
-@@ -59,7 +62,7 @@ add_definitions("-DGIT_COMMIT_TAG=\"${GI
+--- parodus-2.0.0.orig/src/CMakeLists.txt
++++ parodus-2.0.0/src/CMakeLists.txt
+@@ -38,7 +38,7 @@ add_executable(parodus ${SOURCES})
+ target_link_libraries (parodus
+     ${CMAKE_THREAD_LIBS_INIT}
+     -lwrp-c
+-    -lmsgpackc
++    -lmsgpack-c
+     -lcurl
+     -ltrower-base64
+     -lnopoll
+Index: parodus-2.0.0/CMakeLists.txt
+===================================================================
+--- parodus-2.0.0.orig/CMakeLists.txt
++++ parodus-2.0.0/CMakeLists.txt
+@@ -66,7 +66,7 @@ add_definitions("-DGIT_COMMIT_TAG=\"${GI
  add_definitions(-std=c99)
  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_GNU_SOURCE -DNOPOLL_LOGGER ")
  
 -set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -Wno-missing-field-initializers")
-+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -Wno-missing-field-initializers -Wno-error=implicit-function-declaration -Wno-error=address")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror -Wall -Wno-missing-field-initializers -Wno-error=address")
  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall")
  
  
-@@ -71,113 +74,48 @@ if (NOT BUILD_YOCTO)
+@@ -74,117 +74,55 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}
+ #-------------------------------------------------------------------------------
+ find_package (Threads)
+ 
++# Find pkgconfig
++find_package(PkgConfig REQUIRED)
++
+ if (NOT BUILD_YOCTO)
  
  # base64 external dependency
  #-------------------------------------------------------------------------------
@@ -44,7 +54,7 @@ Index: parodus-1.1.5/CMakeLists.txt
 -ExternalProject_Add(nopoll
 -    PREFIX ${PREFIX_DIR}/nopoll
 -    GIT_REPOSITORY https://github.com/Comcast/nopoll.git
--    GIT_TAG "1.0.2"
+-    GIT_TAG "1.0.3"
 -    CONFIGURE_COMMAND COMMAND <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
 -                                                     --includedir=${INCLUDE_DIR}
 -                                                     --libdir=${LIBRARY_DIR}
@@ -55,6 +65,9 @@ Index: parodus-1.1.5/CMakeLists.txt
 -add_dependencies(libnopoll nopoll)
 -
 +find_library(LIBNOPOLL_LIBRARY NAMES libnopoll.so)
++if (NOT LIBNOPOLL_LIBRARY)
++    message(FATAL_ERROR "libnopoll not found")
++endif (NOT LIBNOPOLL_LIBRARY)
  
  # nanoMsg external dependency
  #-------------------------------------------------------------------------------
@@ -66,14 +79,13 @@ Index: parodus-1.1.5/CMakeLists.txt
 -)
 -add_library(libnanomsg STATIC SHARED IMPORTED)
 -add_dependencies(libnanomsg nanomsg)
+-
 +find_library(LIBNANOMSG_LIBRARY NAMES libnanomsg.so)
 +if (NOT LIBNANOMSG_LIBRARY)
 +    message(FATAL_ERROR "libnanomsg not found")
 +endif (NOT LIBNANOMSG_LIBRARY)
  
--
--# cJSON external dependency
-+# Find cJSON package with pkgConfig
+ # cJSON external dependency
  #-------------------------------------------------------------------------------
 -ExternalProject_Add(cJSON
 -    #PREFIX ${PREFIX_DIR}/cJSON
@@ -102,8 +114,7 @@ Index: parodus-1.1.5/CMakeLists.txt
 -
 +find_library(LIBMSGPACK_LIBRARY NAMES libmsgpackc.so)
  
--# curl external dependency
-+# Find libcurl
+ # curl external dependency
  #-------------------------------------------------------------------------------
 -ExternalProject_Add(curl
 -    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/curl
@@ -111,13 +122,12 @@ Index: parodus-1.1.5/CMakeLists.txt
 -    GIT_TAG "curl-7_63_0"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
 -)
+-add_library(libcurl STATIC SHARED IMPORTED)
+-add_dependencies(libcurl curl)
+-
 +find_package(CURL REQUIRED)
 +include_directories(${CURL_INCLUDE_DIRS})
-+
- add_library(libcurl STATIC SHARED IMPORTED)
- add_dependencies(libcurl curl)
  
--
  # cimplog external dependency
  #-------------------------------------------------------------------------------
 -ExternalProject_Add(cimplog
@@ -136,8 +146,8 @@ Index: parodus-1.1.5/CMakeLists.txt
 -ExternalProject_Add(wrp-c
 -	DEPENDS trower-base64 msgpack cimplog
 -    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/wrp-c
--    GIT_REPOSITORY https://github.com/Comcast/wrp-c.git
--    GIT_TAG "1.0.1"
+-    GIT_REPOSITORY https://github.com/xmidt-org/wrp-c.git
+-    GIT_TAG "71f8a39fe39f98da007ed4cdabbb192be1da1685"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
 -                  -DMSGPACK_ENABLE_CXX=OFF
 -                  -DMSGPACK_BUILD_EXAMPLES=OFF
@@ -156,7 +166,7 @@ Index: parodus-1.1.5/CMakeLists.txt
  
  if (ENABLE_SESHAT)
  # libseshat external dependency
-@@ -202,15 +140,12 @@ endif (ENABLE_SESHAT)
+@@ -209,15 +147,11 @@ endif (ENABLE_SESHAT)
  
  # libcjwt external dependency
  #-------------------------------------------------------------------------------
@@ -174,20 +184,45 @@ Index: parodus-1.1.5/CMakeLists.txt
 +if (NOT LIBCJWT_LIBRARY)
 +    message(FATAL_ERROR "libcjwt not found")
 +endif (NOT LIBCJWT_LIBRARY)
-+
  
  if (FEATURE_DNS_QUERY)
  # libucresolv external dependency
-Index: parodus-1.1.5/src/CMakeLists.txt
+Index: parodus-2.0.0/src/ParodusInternal.h
 ===================================================================
---- parodus-1.1.5.orig/src/CMakeLists.txt
-+++ parodus-1.1.5/src/CMakeLists.txt
-@@ -29,7 +29,7 @@ add_executable(parodus ${SOURCES})
- target_link_libraries (parodus
-     ${CMAKE_THREAD_LIBS_INIT}
-     -lwrp-c
--    -lmsgpackc
-+    -lmsgpack-c
-     -lcurl
-     -ltrower-base64
-     -lnopoll
+--- parodus-2.0.0.orig/src/ParodusInternal.h
++++ parodus-2.0.0/src/ParodusInternal.h
+@@ -39,7 +39,7 @@
+ #include <sys/types.h>
+ #include <sys/wait.h>
+ 
+-#include <cJSON.h>
++#include <cjson/cJSON.h>
+ #include <nopoll.h>
+ #include <nanomsg/nn.h>
+ #include <nanomsg/pipeline.h>
+Index: parodus-2.0.0/src/crud_internal.c
+===================================================================
+--- parodus-2.0.0.orig/src/crud_internal.c
++++ parodus-2.0.0/src/crud_internal.c
+@@ -19,7 +19,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <stdlib.h>
+-#include <cJSON.h>
++#include <cjson/cJSON.h>
+ #include <wrp-c.h>
+ #include "crud_tasks.h"
+ #include "crud_internal.h"
+Index: parodus-2.0.0/src/crud_tasks.c
+===================================================================
+--- parodus-2.0.0.orig/src/crud_tasks.c
++++ parodus-2.0.0/src/crud_tasks.c
+@@ -1,7 +1,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <stdlib.h>
+-#include <cJSON.h>
++#include <cjson/cJSON.h>
+ #include <wrp-c.h>
+ #include "crud_tasks.h"
+ #include "crud_internal.h"

@@ -1,12 +1,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wrp-c
-PKG_VERSION:=1.1.3
 PKG_RELEASE:=1
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/xmidt-org/${PKG_NAME}/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=c04f4afc1fa8213e4877ae2547798202db72c18a3b8c982072e23e8cf542a45d
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_URL:=https://github.com/xmidt-org/wrp-c.git
+PKG_MIRROR_HASH:=bf7c875460b8656ffe788a4617c5864b27ac0b72bdb3980f595c51ae3eefccc4
+PKG_SOURCE_VERSION:=71f8a39fe39f98da007ed4cdabbb192be1da1685
+PKG_HASH:=skip
 
 PKG_MAINTAINER:=HaiBac <mail@bacnh.com>
 PKG_LICENSE:=GPL-3.0-only
@@ -20,7 +21,7 @@ define Package/wrp-c
 	CATEGORY:=Libraries
 	TITLE:=C implementation of the Web Routing Protocol
 	DEPENDS:=
-	URL:=https://github.com/xmidt-org/cjwt
+	URL:=https://github.com/xmidt-org/wrp-c
 endef
 
 define Package/wrp-c/description
@@ -29,7 +30,7 @@ endef
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include/wrp-c
-	$(CP) $(PKG_INSTALL_DIR)/usr/include/wrp-c/* $(1)/usr/include/wrp-c
+	$(CP) $(PKG_INSTALL_DIR)/usr/include/wrp-c/* $(1)/usr/include
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libwrp-c.so* $(1)/usr/lib
 endef

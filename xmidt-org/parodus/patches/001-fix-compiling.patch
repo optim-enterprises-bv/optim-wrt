@@ -2,43 +2,25 @@ Index: parodus-85a0d9b7/CMakeLists.txt
 ===================================================================
 --- parodus-85a0d9b7.orig/CMakeLists.txt
 +++ parodus-85a0d9b7/CMakeLists.txt
-@@ -65,11 +65,11 @@ add_definitions(-std=c99)
+@@ -65,7 +65,7 @@ add_definitions(-std=c99)
  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_GNU_SOURCE -DNOPOLL_LOGGER ")
  
  if (DEVICE_CAMERA)
 -set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=all -Wno-missing-field-initializers")
-+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=all -Wno-missing-field-initializers -Wno-error=address")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=all -Wno-missing-field-initializers -Wimplicit-function-declaration")
  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=all")
  add_definitions(-DDEVICE_CAMERA)
  else ()
--set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=all -Wno-missing-field-initializers")
-+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=all -Wno-missing-field-initializers -Wno-error=address")
- set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=all")
- endif (DEVICE_CAMERA)
- 
-@@ -80,117 +80,54 @@ endif (INCLUDE_BREAKPAD)
- # pthread external dependency
- #-------------------------------------------------------------------------------
- find_package (Threads)
-+find_package(PkgConfig)
- 
- if (NOT BUILD_YOCTO)
- 
- # base64 external dependency
- #-------------------------------------------------------------------------------
--ExternalProject_Add(trower-base64
--    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/trower-base64
--    GIT_REPOSITORY https://github.com/Comcast/trower-base64.git
--    GIT_TAG "v1.1.1"
+@@ -89,7 +89,7 @@ ExternalProject_Add(trower-base64
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/trower-base64
+     GIT_REPOSITORY https://github.com/Comcast/trower-base64.git
+     GIT_TAG "v1.1.1"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
--)
--add_library(libtrower-base64 STATIC SHARED IMPORTED)
--add_dependencies(libtrower-base64 trower-base64)
--
-+find_library(LIBBASE64_LIBRARY NAMES libtrower-base64.so)
-+if (NOT LIBBASE64_LIBRARY)
-+    message(FATAL_ERROR "libtrower-base64 not found")
-+endif (NOT LIBBASE64_LIBRARY)
++    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}  -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+ )
+ add_library(libtrower-base64 STATIC SHARED IMPORTED)
+ add_dependencies(libtrower-base64 trower-base64)
+@@ -97,18 +97,18 @@ add_dependencies(libtrower-base64 trower
  
  # nopoll external dependency
  #-------------------------------------------------------------------------------
@@ -54,168 +36,139 @@ Index: parodus-85a0d9b7/CMakeLists.txt
 -)
 -add_library(libnopoll STATIC SHARED IMPORTED)
 -add_dependencies(libnopoll nopoll)
--
-+find_library(LIBNOPOLL_LIBRARY NAMES libnopoll.so)
-+if (NOT LIBNOPOLL_LIBRARY)
-+    message(FATAL_ERROR "libnopoll not found")
-+endif (NOT LIBNOPOLL_LIBRARY)
++# ExternalProject_Add(nopoll
++#     PREFIX ${PREFIX_DIR}/nopoll
++#     GIT_REPOSITORY https://github.com/Comcast/nopoll.git
++#     GIT_TAG "1.0.3"
++#     CONFIGURE_COMMAND COMMAND <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
++#                                                      --includedir=${INCLUDE_DIR}
++#                                                      --libdir=${LIBRARY_DIR}
++#                                                      ${CUSTOM_HOST}
++#     BUILD_IN_SOURCE 1
++# )
++# add_library(libnopoll STATIC SHARED IMPORTED)
++# add_dependencies(libnopoll nopoll)
+ 
  
  # nanoMsg external dependency
- #-------------------------------------------------------------------------------
--ExternalProject_Add(nanomsg
--    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/nanomsg
--    GIT_REPOSITORY https://github.com/nanomsg/nanomsg.git
--    GIT_TAG "1.1.4"
+@@ -117,7 +117,7 @@ ExternalProject_Add(nanomsg
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/nanomsg
+     GIT_REPOSITORY https://github.com/nanomsg/nanomsg.git
+     GIT_TAG "1.1.4"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
--)
--add_library(libnanomsg STATIC SHARED IMPORTED)
--add_dependencies(libnanomsg nanomsg)
--
-+find_library(LIBNANOMSG_LIBRARY NAMES libnanomsg.so)
-+if (NOT LIBNANOMSG_LIBRARY)
-+    message(FATAL_ERROR "libnanomsg not found")
-+endif (NOT LIBNANOMSG_LIBRARY)
- 
- # cJSON external dependency
- #-------------------------------------------------------------------------------
--ExternalProject_Add(cJSON
--    #PREFIX ${PREFIX_DIR}/cJSON
--    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cJSON
--    GIT_REPOSITORY https://github.com/DaveGamble/cJSON.git
--    GIT_TAG "v1.7.8"
++    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+ )
+ add_library(libnanomsg STATIC SHARED IMPORTED)
+ add_dependencies(libnanomsg nanomsg)
+@@ -130,7 +130,7 @@ ExternalProject_Add(cJSON
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cJSON
+     GIT_REPOSITORY https://github.com/DaveGamble/cJSON.git
+     GIT_TAG "v1.7.8"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
--)
--add_library(libcJSON STATIC SHARED IMPORTED)
--add_dependencies(libcJSON cJSON)
--
-+pkg_check_modules(CJSON REQUIRED libcjson)
- 
- # msgpack-c external dependency
- #-------------------------------------------------------------------------------
--ExternalProject_Add(msgpack
--    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/msgpack
--    GIT_REPOSITORY https://github.com/msgpack/msgpack-c.git
--    GIT_TAG "cpp-3.1.1"
++    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+ )
+ add_library(libcJSON STATIC SHARED IMPORTED)
+ add_dependencies(libcJSON cJSON)
+@@ -142,9 +142,10 @@ ExternalProject_Add(msgpack
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/msgpack
+     GIT_REPOSITORY https://github.com/msgpack/msgpack-c.git
+     GIT_TAG "cpp-3.1.1"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
--                  -DMSGPACK_ENABLE_CXX=OFF
--                  -DMSGPACK_BUILD_EXAMPLES=OFF
--)
--add_library(libmsgpack STATIC SHARED IMPORTED)
--add_dependencies(libmsgpack msgpack)
--
-+find_library(LIBMSGPACK_LIBRARY NAMES libmsgpackc.so)
- 
- # curl external dependency
- #-------------------------------------------------------------------------------
--ExternalProject_Add(curl
--    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/curl
--    GIT_REPOSITORY https://github.com/curl/curl.git
--    GIT_TAG "curl-7_63_0"
++    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+                   -DMSGPACK_ENABLE_CXX=OFF
+                   -DMSGPACK_BUILD_EXAMPLES=OFF
++                  -DCMAKE_INSTALL_LIBDIR=${LIBRARY_DIR}
+ )
+ add_library(libmsgpack STATIC SHARED IMPORTED)
+ add_dependencies(libmsgpack msgpack)
+@@ -156,7 +157,10 @@ ExternalProject_Add(curl
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/curl
+     GIT_REPOSITORY https://github.com/curl/curl.git
+     GIT_TAG "curl-7_63_0"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
--)
--add_library(libcurl STATIC SHARED IMPORTED)
--add_dependencies(libcurl curl)
--
-+find_package(CURL REQUIRED)
-+include_directories(${CURL_INCLUDE_DIRS})
- 
- # cimplog external dependency
- #-------------------------------------------------------------------------------
--ExternalProject_Add(cimplog
--    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cimplog
--    GIT_REPOSITORY https://github.com/Comcast/cimplog.git
--    GIT_TAG "1.0.2"
++    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} 
++                  -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} 
++                  -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} 
++                  -DBUILD_TESTING=OFF
+ )
+ add_library(libcurl STATIC SHARED IMPORTED)
+ add_dependencies(libcurl curl)
+@@ -168,7 +172,11 @@ ExternalProject_Add(cimplog
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cimplog
+     GIT_REPOSITORY https://github.com/Comcast/cimplog.git
+     GIT_TAG "1.0.2"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
--)
--add_library(libcimplog STATIC SHARED IMPORTED)
--add_dependencies(libcimplog cimplog)
--
-+find_library(LIBCIMPLOG_LIBRARY NAMES libcimplog.so)
- 
- # wrp-c external dependency
- #-------------------------------------------------------------------------------
--ExternalProject_Add(wrp-c
--	DEPENDS trower-base64 msgpack cimplog
--    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/wrp-c
--    GIT_REPOSITORY https://github.com/xmidt-org/wrp-c.git
--    GIT_TAG "b5ef4d10cb39905908788bc89ab3e4dab201db8a"
++    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} 
++                  -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} 
++                  -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} 
++                  -DBUILD_TESTING=OFF
++                  -DCMAKE_C_FLAGS=-Wno-error=format
+ )
+ add_library(libcimplog STATIC SHARED IMPORTED)
+ add_dependencies(libcimplog cimplog)
+@@ -181,7 +189,9 @@ ExternalProject_Add(wrp-c
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/wrp-c
+     GIT_REPOSITORY https://github.com/xmidt-org/wrp-c.git
+     GIT_TAG "b5ef4d10cb39905908788bc89ab3e4dab201db8a"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
--                  -DMSGPACK_ENABLE_CXX=OFF
--                  -DMSGPACK_BUILD_EXAMPLES=OFF
--                  -DBUILD_TESTING=OFF
--                  -DMAIN_PROJ_BUILD=ON
--                  -DMAIN_PROJ_LIB_PATH=${LIBRARY_DIR}
--    		  -DMAIN_PROJ_INCLUDE_PATH=${INCLUDE_DIR}
--)
--add_library(libwrp-c STATIC SHARED IMPORTED)
--add_dependencies(libwrp-c wrp-c)
-+find_library(LIBWRP_C_LIBRARY NAMES libwrp-c.so)
-+if (NOT LIBWRP_C_LIBRARY)
-+    message(FATAL_ERROR "libwrp-c not found")
-+endif (NOT LIBWRP_C_LIBRARY)
- 
- 
- if (ENABLE_SESHAT)
-@@ -216,15 +153,11 @@ endif (ENABLE_SESHAT)
- 
- # libcjwt external dependency
- #-------------------------------------------------------------------------------
--ExternalProject_Add(cjwt
--    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cjwt
--    GIT_REPOSITORY https://github.com/Comcast/cjwt.git
++    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} 
++                  -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
++                  -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+                   -DMSGPACK_ENABLE_CXX=OFF
+                   -DMSGPACK_BUILD_EXAMPLES=OFF
+                   -DBUILD_TESTING=OFF
+@@ -201,7 +211,8 @@ ExternalProject_Add(libseshat
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/libseshat
+     GIT_REPOSITORY https://github.com/Comcast/seshat.git
+     GIT_TAG "1.0.1"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
++    CMAKE_ARGS +=  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
++                  -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+     	          -DMAIN_PROJ_BUILD=ON
+     	          -DMAIN_PROJ_LIB_PATH=${LIBRARY_DIR}
+     	          -DMAIN_PROJ_LIB64_PATH=${LIBRARY_DIR64}
+@@ -219,9 +230,13 @@ endif (ENABLE_SESHAT)
+ ExternalProject_Add(cjwt
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cjwt
+     GIT_REPOSITORY https://github.com/Comcast/cjwt.git
 -    GIT_TAG "1b023c41bb2d6dbbf493c202ed81f06c84d5b51b"
--    #GIT_TAG "1.0.1"
++    GIT_TAG "1f28bdaf9f79904d9459c6d5f537b7e234b872db"
+     #GIT_TAG "1.0.1"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
--)
--add_library(libcjwt STATIC SHARED IMPORTED)
--add_dependencies(libcjwt cjwt)
-+find_library(LIBCJWT_LIBRARY NAMES libcjwt.so)
-+
-+if (NOT LIBCJWT_LIBRARY)
-+    message(FATAL_ERROR "libcjwt not found")
-+endif (NOT LIBCJWT_LIBRARY)
++    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} 
++                  -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
++                  -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} 
++                  -DBUILD_TESTING=OFF
++                  -DCMAKE_C_FLAGS=-Wno-error=deprecated-declarations
+ )
+ add_library(libcjwt STATIC SHARED IMPORTED)
+ add_dependencies(libcjwt cjwt)
+Index: parodus-85a0d9b7/src/config.c
+===================================================================
+--- parodus-85a0d9b7.orig/src/config.c
++++ parodus-85a0d9b7/src/config.c
+@@ -134,7 +134,7 @@ unsigned int get_algo_mask (const char *
+ 	{
+ 		algo_str = get_tok (algo_str, ':', tok, BUFLEN);
+ 		alg_val = cjwt_alg_str_to_enum (tok);
+-		if ((alg_val < 0)  || (alg_val >= num_algorithms)) {
++		if ((alg_val < 0)  || (alg_val >= alg_last)) {
+        ParodusError("Invalid jwt algorithm %s\n", tok);
+        return (unsigned int) (-1);
+ 		}
+Index: parodus-85a0d9b7/src/token.c
+===================================================================
+--- parodus-85a0d9b7.orig/src/token.c
++++ parodus-85a0d9b7/src/token.c
+@@ -163,7 +163,7 @@ bool validate_algo(const cjwt_t *jwt)
+         int alg = jwt->header.alg;
+         int alg_mask;
  
- if (FEATURE_DNS_QUERY)
- # libucresolv external dependency
-Index: parodus-85a0d9b7/src/ParodusInternal.h
-===================================================================
---- parodus-85a0d9b7.orig/src/ParodusInternal.h
-+++ parodus-85a0d9b7/src/ParodusInternal.h
-@@ -39,7 +39,7 @@
- #include <sys/types.h>
- #include <sys/wait.h>
- 
--#include <cJSON.h>
-+#include <cjson/cJSON.h>
- #include <nopoll.h>
- #include <nanomsg/nn.h>
- #include <nanomsg/pipeline.h>
-Index: parodus-85a0d9b7/src/crud_tasks.c
-===================================================================
---- parodus-85a0d9b7.orig/src/crud_tasks.c
-+++ parodus-85a0d9b7/src/crud_tasks.c
-@@ -1,7 +1,7 @@
- #include <stdio.h>
- #include <string.h>
- #include <stdlib.h>
--#include <cJSON.h>
-+#include <cjson/cJSON.h>
- #include <wrp-c.h>
- #include "crud_tasks.h"
- #include "crud_internal.h"
-Index: parodus-85a0d9b7/src/crud_internal.c
-===================================================================
---- parodus-85a0d9b7.orig/src/crud_internal.c
-+++ parodus-85a0d9b7/src/crud_internal.c
-@@ -19,7 +19,7 @@
- #include <stdio.h>
- #include <string.h>
- #include <stdlib.h>
--#include <cJSON.h>
-+#include <cjson/cJSON.h>
- #include <wrp-c.h>
- #include "crud_tasks.h"
- #include "crud_internal.h"
+-	if ((alg < 0) || (alg >= num_algorithms))
++	if ((alg < 0) || (alg >= alg_last))
+ 		return false;
+ 	alg_mask = 1<<alg;
+ 	if ((alg_mask & cfg->jwt_algo) == 0) {
 Index: parodus-85a0d9b7/src/conn_interface.c
 ===================================================================
 --- parodus-85a0d9b7.orig/src/conn_interface.c

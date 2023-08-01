@@ -19,13 +19,20 @@ define Package/wrp-c
 	SECTION:=libs
 	CATEGORY:=Libraries
 	TITLE:=C implementation of the Web Routing Protocol
-	DEPENDS:=
+	DEPENDS:= +trower-base64 +msgpack +cimplog
 	URL:=https://github.com/xmidt-org/wrp-c
 endef
 
 define Package/wrp-c/description
 	C implementation of the Web Routing Protocol
 endef
+
+CMAKE_OPTIONS += \
+	-DBUILD_TESTING=OFF \
+	-DMSGPACK_ENABLE_CXX=OFF \
+	-DMSGPACK_BUILD_EXAMPLES=OFF \
+	-DBUILD_TESTING=OFF \
+	-DMAIN_PROJ_BUILD=ON
 
 EXTRA_CFLAGS += -Wno-error=stringop-truncation
 

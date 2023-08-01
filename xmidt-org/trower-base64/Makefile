@@ -29,14 +29,14 @@ endef
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include
-	$(CP) $(PKG_INSTALL_DIR)/usr/include/trower-base64/* $(1)/usr/include
+	$(CP) $(PKG_INSTALL_DIR)/usr/include/trower-base64 $(1)/usr/include/
 	$(INSTALL_DIR) $(1)/usr/lib
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libtrower-base64.so* $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libtrower-base64.so* $(1)/usr/lib/
 endef
 
 define Package/trower-base64/install
 	$(INSTALL_DIR) $(1)/usr/lib
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libtrower-base64.so* $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libtrower-base64.so* $(1)/usr/lib/
 endef
 
 $(eval $(call BuildPackage,trower-base64))

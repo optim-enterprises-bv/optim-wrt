@@ -27,6 +27,9 @@ define Package/cimplog/description
 	Simple logging library for rdklogger
 endef
 
+CMAKE_OPTIONS += \
+	-DBUILD_TESTING=OFF
+
 EXTRA_CFLAGS += -Wno-error=format
 
 define Build/InstallDev

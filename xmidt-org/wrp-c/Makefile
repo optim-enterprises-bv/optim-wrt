@@ -27,6 +27,8 @@ define Package/wrp-c/description
 	C implementation of the Web Routing Protocol
 endef
 
+EXTRA_CFLAGS += -Wno-error=stringop-truncation
+
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include/wrp-c
 	$(CP) $(PKG_INSTALL_DIR)/usr/include/wrp-c/* $(1)/usr/include

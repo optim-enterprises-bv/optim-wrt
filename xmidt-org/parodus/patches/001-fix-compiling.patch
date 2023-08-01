@@ -177,16 +177,54 @@ Index: parodus-85a0d9b7/CMakeLists.txt
  
  if (FEATURE_DNS_QUERY)
  # libucresolv external dependency
-Index: parodus-85a0d9b7/src/CMakeLists.txt
+Index: parodus-85a0d9b7/src/ParodusInternal.h
 ===================================================================
---- parodus-85a0d9b7.orig/src/CMakeLists.txt
-+++ parodus-85a0d9b7/src/CMakeLists.txt
-@@ -38,7 +38,7 @@ add_executable(parodus ${SOURCES})
- target_link_libraries (parodus
-     ${CMAKE_THREAD_LIBS_INIT}
-     -lwrp-c
--    -lmsgpackc
-+    -lmsgpack-c
-     -lcurl
-     -ltrower-base64
-     -lnopoll
+--- parodus-85a0d9b7.orig/src/ParodusInternal.h
++++ parodus-85a0d9b7/src/ParodusInternal.h
+@@ -39,7 +39,7 @@
+ #include <sys/types.h>
+ #include <sys/wait.h>
+ 
+-#include <cJSON.h>
++#include <cjson/cJSON.h>
+ #include <nopoll.h>
+ #include <nanomsg/nn.h>
+ #include <nanomsg/pipeline.h>
+Index: parodus-85a0d9b7/src/crud_tasks.c
+===================================================================
+--- parodus-85a0d9b7.orig/src/crud_tasks.c
++++ parodus-85a0d9b7/src/crud_tasks.c
+@@ -1,7 +1,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <stdlib.h>
+-#include <cJSON.h>
++#include <cjson/cJSON.h>
+ #include <wrp-c.h>
+ #include "crud_tasks.h"
+ #include "crud_internal.h"
+Index: parodus-85a0d9b7/src/crud_internal.c
+===================================================================
+--- parodus-85a0d9b7.orig/src/crud_internal.c
++++ parodus-85a0d9b7/src/crud_internal.c
+@@ -19,7 +19,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <stdlib.h>
+-#include <cJSON.h>
++#include <cjson/cJSON.h>
+ #include <wrp-c.h>
+ #include "crud_tasks.h"
+ #include "crud_internal.h"
+Index: parodus-85a0d9b7/src/conn_interface.c
+===================================================================
+--- parodus-85a0d9b7.orig/src/conn_interface.c
++++ parodus-85a0d9b7/src/conn_interface.c
+@@ -232,7 +232,6 @@ void createSocketConnection(void (* init
+     nopoll_cleanup_library();
+     curl_global_cleanup();
+     clear_metadata();
+-    rdk_logger_deinit();
+     free_server_list(&server_list);
+ }
+ 

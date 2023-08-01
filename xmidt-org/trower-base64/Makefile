@@ -1,19 +1,19 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=trower-base64
-PKG_VERSION:=1.2.7
+PKG_VERSION:=1.1.1
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/xmidt-org/trower-base64/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=9921ea1eca2328c6cadc058df805e6ac58cca06c0737ac21b987ba13b8697ad9
+PKG_HASH:=2ba31fcb81bdb2a7568e4f814a50d10c262e3287e5a6565484ffdafe0980f40b
 
 PKG_MAINTAINER:=HaiBac <mail@bacnh.com>
 PKG_LICENSE:=GPL-3.0-only
 PKG_LICENSE_FILES:=COPYING
 
 include $(INCLUDE_DIR)/package.mk
-include $(INCLUDE_DIR)/meson.mk
+include $(INCLUDE_DIR)/cmake.mk
 
 define Package/trower-base64
 	SECTION:=libs

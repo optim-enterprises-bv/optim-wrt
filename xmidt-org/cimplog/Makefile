@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=cimplog
-PKG_VERSION:=1.0.3
+PKG_VERSION:=1.0.2
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/xmidt-org/${PKG_NAME}/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=8c60a72336a7904b132f16dd6a6167fca99efc1af7dabc00d22c0c0df0669c91
+PKG_HASH:=095a53fd068794254c7aed9a06b4fb7689f0cec5b9017989f3ea97c981808fc1
 
 PKG_MAINTAINER:=HaiBac <mail@bacnh.com>
 PKG_LICENSE:=GPL-3.0-only

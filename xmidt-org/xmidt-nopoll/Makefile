@@ -8,12 +8,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=xmidt-nopoll
-PKG_VERSION:=1.0.4
+PKG_VERSION:=1.0.3
 PKG_RELEASE:=2
 
 PKG_SOURCE_URL:=https://codeload.github.com/xmidt-org/nopoll/tar.gz/$(PKG_VERSION)?
 PKG_SOURCE:=nopoll-$(PKG_VERSION).tar.gz
-PKG_HASH:=daa8f8b6eb99210df5a0323bdbab74bfc73700126a47ae47c2bcd21ee6405abb
+PKG_HASH:=4b7d4464201659cf4a69c793d0cf03feabaed6464c699a23387618b4610ae62d
 PKG_BUILD_DIR:=$(BUILD_DIR)/nopoll-$(PKG_VERSION)
 
 PKG_MAINTAINER:=John Clark <inindev@gmail.com>

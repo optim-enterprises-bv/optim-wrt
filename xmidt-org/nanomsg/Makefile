@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=nanomsg
-PKG_VERSION:=1.2
+PKG_VERSION:=1.1.4
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/nanomsg/${PKG_NAME}/tar.gz/$(PKG_VERSION)?
-PKG_HASH:=6ef7282e833df6a364f3617692ef21e59d5c4878acea4f2d7d36e21c8858de67
+PKG_HASH:=ae5c688e874bf9bf1db764d08538c54f6ce9e4dc78bc5948008a304d519ad3b6
 
 PKG_MAINTAINER:=HaiBac <mail@bacnh.com>
 PKG_LICENSE:=GPL-3.0-only

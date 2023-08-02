@@ -30,7 +30,7 @@ define Package/parodus/description
 	C implementation of the XMiDT client coordinator
 endef
 
-define Package/parodus/install
+define Package/parodus/install	
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/parodus $(1)/usr/bin
 endef

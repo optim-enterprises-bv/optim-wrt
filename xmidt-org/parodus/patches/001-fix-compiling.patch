@@ -11,65 +11,71 @@ Index: parodus-85a0d9b7/CMakeLists.txt
  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=all")
  add_definitions(-DDEVICE_CAMERA)
  else ()
-@@ -89,7 +89,7 @@ ExternalProject_Add(trower-base64
-     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/trower-base64
-     GIT_REPOSITORY https://github.com/Comcast/trower-base64.git
-     GIT_TAG "v1.1.1"
--    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
-+    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}  -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
- )
- add_library(libtrower-base64 STATIC SHARED IMPORTED)
- add_dependencies(libtrower-base64 trower-base64)
-@@ -97,18 +97,18 @@ add_dependencies(libtrower-base64 trower
- 
- # nopoll external dependency
+@@ -87,11 +87,14 @@ if (NOT BUILD_YOCTO)
  #-------------------------------------------------------------------------------
--ExternalProject_Add(nopoll
--    PREFIX ${PREFIX_DIR}/nopoll
--    GIT_REPOSITORY https://github.com/Comcast/nopoll.git
--    GIT_TAG "1.0.3"
+ ExternalProject_Add(trower-base64
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/trower-base64
+-    GIT_REPOSITORY https://github.com/Comcast/trower-base64.git
+-    GIT_TAG "v1.1.1"
+-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
++    GIT_REPOSITORY https://github.com/xmidt-org/trower-base64.git
++    GIT_TAG "v1.2.0"
++    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} 
++                  -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}  
++                  -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} 
++                  -DBUILD_TESTING=OFF
+ )
+-add_library(libtrower-base64 STATIC SHARED IMPORTED)
++add_library(libtrower-base64 STATIC IMPORTED)
+ add_dependencies(libtrower-base64 trower-base64)
+ 
+ 
+@@ -101,25 +104,25 @@ ExternalProject_Add(nopoll
+     PREFIX ${PREFIX_DIR}/nopoll
+     GIT_REPOSITORY https://github.com/Comcast/nopoll.git
+     GIT_TAG "1.0.3"
 -    CONFIGURE_COMMAND COMMAND <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
--                                                     --includedir=${INCLUDE_DIR}
--                                                     --libdir=${LIBRARY_DIR}
--                                                     ${CUSTOM_HOST}
--    BUILD_IN_SOURCE 1
--)
++    CONFIGURE_COMMAND COMMAND CC=${CMAKE_C_COMPILER} <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
+                                                      --includedir=${INCLUDE_DIR}
+                                                      --libdir=${LIBRARY_DIR}
++                                                     --host=${CMAKE_SYSTEM_PROCESSOR}
+                                                      ${CUSTOM_HOST}
+     BUILD_IN_SOURCE 1
+ )
 -add_library(libnopoll STATIC SHARED IMPORTED)
--add_dependencies(libnopoll nopoll)
-+# ExternalProject_Add(nopoll
-+#     PREFIX ${PREFIX_DIR}/nopoll
-+#     GIT_REPOSITORY https://github.com/Comcast/nopoll.git
-+#     GIT_TAG "1.0.3"
-+#     CONFIGURE_COMMAND COMMAND <SOURCE_DIR>/autogen.sh --prefix=${PREFIX}
-+#                                                      --includedir=${INCLUDE_DIR}
-+#                                                      --libdir=${LIBRARY_DIR}
-+#                                                      ${CUSTOM_HOST}
-+#     BUILD_IN_SOURCE 1
-+# )
-+# add_library(libnopoll STATIC SHARED IMPORTED)
-+# add_dependencies(libnopoll nopoll)
++add_library(libnopoll STATIC IMPORTED)
+ add_dependencies(libnopoll nopoll)
  
- 
+-
  # nanoMsg external dependency
-@@ -117,7 +117,7 @@ ExternalProject_Add(nanomsg
+ #-------------------------------------------------------------------------------
+ ExternalProject_Add(nanomsg
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/nanomsg
      GIT_REPOSITORY https://github.com/nanomsg/nanomsg.git
      GIT_TAG "1.1.4"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
 +    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
  )
- add_library(libnanomsg STATIC SHARED IMPORTED)
+-add_library(libnanomsg STATIC SHARED IMPORTED)
++add_library(libnanomsg STATIC IMPORTED)
  add_dependencies(libnanomsg nanomsg)
-@@ -130,7 +130,7 @@ ExternalProject_Add(cJSON
+ 
+ 
+@@ -129,10 +132,10 @@ ExternalProject_Add(cJSON
+     #PREFIX ${PREFIX_DIR}/cJSON
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cJSON
      GIT_REPOSITORY https://github.com/DaveGamble/cJSON.git
-     GIT_TAG "v1.7.8"
+-    GIT_TAG "v1.7.8"
 -    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
++    GIT_TAG "v1.7.14"
 +    CMAKE_ARGS += -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
  )
- add_library(libcJSON STATIC SHARED IMPORTED)
+-add_library(libcJSON STATIC SHARED IMPORTED)
++add_library(libcJSON STATIC IMPORTED)
  add_dependencies(libcJSON cJSON)
-@@ -142,9 +142,10 @@ ExternalProject_Add(msgpack
+ 
+ 
+@@ -142,11 +145,12 @@ ExternalProject_Add(msgpack
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/msgpack
      GIT_REPOSITORY https://github.com/msgpack/msgpack-c.git
      GIT_TAG "cpp-3.1.1"
@@ -79,9 +85,12 @@ Index: parodus-85a0d9b7/CMakeLists.txt
                    -DMSGPACK_BUILD_EXAMPLES=OFF
 +                  -DCMAKE_INSTALL_LIBDIR=${LIBRARY_DIR}
  )
- add_library(libmsgpack STATIC SHARED IMPORTED)
+-add_library(libmsgpack STATIC SHARED IMPORTED)
++add_library(libmsgpack STATIC IMPORTED)
  add_dependencies(libmsgpack msgpack)
-@@ -156,7 +157,10 @@ ExternalProject_Add(curl
+ 
+ 
+@@ -156,9 +160,12 @@ ExternalProject_Add(curl
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/curl
      GIT_REPOSITORY https://github.com/curl/curl.git
      GIT_TAG "curl-7_63_0"
@@ -91,9 +100,12 @@ Index: parodus-85a0d9b7/CMakeLists.txt
 +                  -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} 
 +                  -DBUILD_TESTING=OFF
  )
- add_library(libcurl STATIC SHARED IMPORTED)
+-add_library(libcurl STATIC SHARED IMPORTED)
++add_library(libcurl STATIC IMPORTED)
  add_dependencies(libcurl curl)
-@@ -168,7 +172,11 @@ ExternalProject_Add(cimplog
+ 
+ 
+@@ -168,9 +175,13 @@ ExternalProject_Add(cimplog
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cimplog
      GIT_REPOSITORY https://github.com/Comcast/cimplog.git
      GIT_TAG "1.0.2"
@@ -104,9 +116,12 @@ Index: parodus-85a0d9b7/CMakeLists.txt
 +                  -DBUILD_TESTING=OFF
 +                  -DCMAKE_C_FLAGS=-Wno-error=format
  )
- add_library(libcimplog STATIC SHARED IMPORTED)
+-add_library(libcimplog STATIC SHARED IMPORTED)
++add_library(libcimplog STATIC IMPORTED)
  add_dependencies(libcimplog cimplog)
-@@ -181,7 +189,9 @@ ExternalProject_Add(wrp-c
+ 
+ 
+@@ -181,7 +192,9 @@ ExternalProject_Add(wrp-c
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/wrp-c
      GIT_REPOSITORY https://github.com/xmidt-org/wrp-c.git
      GIT_TAG "b5ef4d10cb39905908788bc89ab3e4dab201db8a"
@@ -117,7 +132,16 @@ Index: parodus-85a0d9b7/CMakeLists.txt
                    -DMSGPACK_ENABLE_CXX=OFF
                    -DMSGPACK_BUILD_EXAMPLES=OFF
                    -DBUILD_TESTING=OFF
-@@ -201,7 +211,8 @@ ExternalProject_Add(libseshat
+@@ -189,7 +202,7 @@ ExternalProject_Add(wrp-c
+                   -DMAIN_PROJ_LIB_PATH=${LIBRARY_DIR}
+     		  -DMAIN_PROJ_INCLUDE_PATH=${INCLUDE_DIR}
+ )
+-add_library(libwrp-c STATIC SHARED IMPORTED)
++add_library(libwrp-c STATIC IMPORTED)
+ add_dependencies(libwrp-c wrp-c)
+ 
+ 
+@@ -201,14 +214,15 @@ ExternalProject_Add(libseshat
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/libseshat
      GIT_REPOSITORY https://github.com/Comcast/seshat.git
      GIT_TAG "1.0.1"
@@ -127,8 +151,19 @@ Index: parodus-85a0d9b7/CMakeLists.txt
      	          -DMAIN_PROJ_BUILD=ON
      	          -DMAIN_PROJ_LIB_PATH=${LIBRARY_DIR}
      	          -DMAIN_PROJ_LIB64_PATH=${LIBRARY_DIR64}
-@@ -219,9 +230,13 @@ endif (ENABLE_SESHAT)
+     		  -DMAIN_PROJ_COMMON_PATH=${COMMON_LIBRARY_DIR}
+     		  -DMAIN_PROJ_INCLUDE_PATH=${INCLUDE_DIR}
+ )
+-add_library(liblibseshat STATIC SHARED IMPORTED)
++add_library(liblibseshat STATIC IMPORTED)
+ add_dependencies(liblibseshat libseshat)
+ include_directories(${INCLUDE_DIR}/libseshat)
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DENABLE_SESHAT ")
+@@ -217,13 +231,18 @@ endif (ENABLE_SESHAT)
+ # libcjwt external dependency
+ #-------------------------------------------------------------------------------
  ExternalProject_Add(cjwt
++    DEPENDS cJSON trower-base64
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/_prefix/cjwt
      GIT_REPOSITORY https://github.com/Comcast/cjwt.git
 -    GIT_TAG "1b023c41bb2d6dbbf493c202ed81f06c84d5b51b"
@@ -141,8 +176,46 @@ Index: parodus-85a0d9b7/CMakeLists.txt
 +                  -DBUILD_TESTING=OFF
 +                  -DCMAKE_C_FLAGS=-Wno-error=deprecated-declarations
  )
- add_library(libcjwt STATIC SHARED IMPORTED)
+-add_library(libcjwt STATIC SHARED IMPORTED)
++add_library(libcjwt STATIC IMPORTED)
  add_dependencies(libcjwt cjwt)
+ 
+ if (FEATURE_DNS_QUERY)
+@@ -235,7 +254,7 @@ ExternalProject_Add(ucresolv
+     GIT_TAG "1.0.0"
+     CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+ )
+-add_library(libucresolv STATIC SHARED IMPORTED)
++add_library(libucresolv STATIC IMPORTED)
+ add_dependencies(libucresolv ucresolv)
+ include_directories(${INCLUDE_DIR}
+                     ${INCLUDE_DIR}/ucresolv
+@@ -253,13 +272,13 @@ ExternalProject_Add(rbus
+      CMAKE_ARGS += -DBUILD_FOR_DESKTOP=ON -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+ )
+ 
+-add_library(librbuscore STATIC SHARED IMPORTED)
++add_library(librbuscore STATIC IMPORTED)
+ add_dependencies(librbuscore rbuscore)
+ 
+-add_library(librtMessage STATIC SHARED IMPORTED)
++add_library(librtMessage STATIC IMPORTED)
+ add_dependencies(librtMessage rtMessage)
+ 
+-add_library(librbus STATIC SHARED IMPORTED)
++add_library(librbus STATIC IMPORTED)
+ add_dependencies(librbus rbus)
+ endif (ENABLE_WEBCFGBIN)
+ 
+@@ -272,7 +291,7 @@ ExternalProject_Add(cmocka
+     GIT_TAG "b71a3060699bc1a5b00e958be353772f42545ac2"
+     CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+ )
+-add_library(libcmocka STATIC SHARED IMPORTED)
++add_library(libcmocka STATIC IMPORTED)
+ add_dependencies(libcmocka cmocka)
+ 
+ endif (BUILD_TESTING)
 Index: parodus-85a0d9b7/src/config.c
 ===================================================================
 --- parodus-85a0d9b7.orig/src/config.c

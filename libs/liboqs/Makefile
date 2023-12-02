@@ -14,21 +14,20 @@ PKG_SOURCE_VERSION:=v$(PKG_VERSION)
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
 
-PKG_BUILD_DEPENDS:=libubox
-
 CMAKE_INSTALL:=1
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
-CMAKE_OPTIONS += -DOQS_PERMIT_UNSUPPORTED_ARCHITECTURE=ON
-CMAKE_OPTIONS += -DOQS_BUILD_ONLY_LIB=ON
+CMAKE_OPTIONS += \
+		-DOQS_PERMIT_UNSUPPORTED_ARCHITECTURE=ON \
+		-DOQS_BUILD_ONLY_LIB=ON
 
 define Package/liboqs
 	SECTION:=libs
 	CATEGORY:=Libraries
 	TITLE:=C library for prototyping and experimenting with quantum-resistant cryptography
-	DEPENDS:=+libustream-wolfssl
+	DEPENDS:=+libopenssl
 	URL:=https://openquantumsafe.org/
 	MAINTAINER:=HaiBac <mail@bacnh.com>
 endef

@@ -19,7 +19,7 @@ CMAKE_INSTALL:=1
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
-define Package/qos-provider
+define Package/oqs-provider
 	SECTION:=libs
 	CATEGORY:=Libraries
 	TITLE:=OpenSSL 3 provider containing post-quantum algorithms
@@ -28,9 +28,9 @@ define Package/qos-provider
 	MAINTAINER:=HaiBac <mail@bacnh.com>
 endef
 
-define Package/qos-provider/install
+define Package/oqs-provider/install
 	$(INSTALL_DIR) $(1)/usr/lib/ossl-modules
 	$(CP) $(PKG_BUILD_DIR)/lib/oqsprovider.so $(1)/usr/lib/ossl-modules/
 endef
 
-$(eval $(call BuildPackage,qos-provider))
+$(eval $(call BuildPackage,oqs-provider))

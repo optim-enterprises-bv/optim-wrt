@@ -32,13 +32,6 @@ define Package/liboqs
 	MAINTAINER:=HaiBac <mail@bacnh.com>
 endef
 
-define Build/InstallDev
-	$(INSTALL_DIR) $(1)/usr/include
-	$(CP) $(PKG_INSTALL_DIR)/usr/include/oqs $(1)/usr/include/
-	$(INSTALL_DIR) $(1)/usr/lib
-	$(CP) $(PKG_INSTALL_DIR)/usr/lib/liboqs.* $(1)/usr/lib/
-endef
-
 define Package/liboqs/install
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/liboqs.* $(1)/usr/lib/

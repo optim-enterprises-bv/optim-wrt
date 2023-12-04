@@ -1,14 +1,14 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME := suricata
-PKG_VERSION := 6.0.6
+PKG_VERSION := 6.0.4
 PKG_RELEASE := 1
 
 PKG_SOURCE_PROTO := git
-PKG_SOURCE_DATE := 2022-07-12
-PKG_SOURCE_VERSION := 67f5720885a64c56a7357dc00538ef2ddef53df4
+PKG_SOURCE_DATE := 2021-11-18
+PKG_SOURCE_VERSION := e9c8767b905fcae53432076572bfbeaf639b202d
 PKG_SOURCE_URL := https://github.com/OISF/suricata.git
-PKG_MIRROR_HASH := babe5800a00a35993c64e373ad451d492d8f68520f5d19ca8434d186659a4f8d
+PKG_MIRROR_HASH := 0fc6a18c503022f304ae9c86ff8be0f52fe9b204c6dc78c69ef2039395d67d9c
 
 PKG_FIXUP := autoreconf
 PKG_FIXUP := patch-libtool
@@ -18,7 +18,7 @@ PKG_INSTALL := 1
 PKG_BUILD_DEPENDS := rust/host python3/host expat/host
 
 include $(INCLUDE_DIR)/package.mk
-include ../../lang/rust/rustc_environment.mk
+include ../../lang/rust/rust_environment.mk
 
 define Package/suricata6/config
     source "$(SOURCE)/Config.in"
@@ -26,8 +26,8 @@ endef
 
 CONFIGURE_VARS += \
   CARGO_HOME="$(CARGO_HOME)" \
-  ac_cv_path_CARGO="$(STAGING_DIR_HOST)/bin/cargo" \
-  ac_cv_path_RUSTC="$(STAGING_DIR_HOST)/bin/rustc" \
+  ac_cv_path_CARGO="$(CARGO_HOME)/bin/cargo" \
+  ac_cv_path_RUSTC="$(CARGO_HOME)/bin/rustc" \
 
 CONFIGURE_ARGS += \
   --target=$(RUSTC_TARGET_ARCH) \
@@ -36,8 +36,11 @@ CONFIGURE_ARGS += \
   --enable-shared \
   --disable-gccmarch-native \
   --with-gnu-ld \
-  --with-sysroot=$(STAGING_DIR_HOST) \
-  --enable-non-bundled-htp
+  --with-sysroot=$(STAGING_DIR_HOST)
+#	--enable-non-bundled-htp \
+#	--with-libhtp-includes=$(STAGING_DIR_HOSTPKG)/include \
+#	--with-libhtp-libraries=$(STAGING_DIR_HOSTPKG)/lib
+#	--with-sysroot=$(TOOLCHAIN_DIR)
 
 ifeq ($(CONFIG_SURICATA_ENABLE_PYTHON),y)
 CONFIGURE_ARGS += --enable-python
@@ -53,14 +56,8 @@ CONFIGURE_ARGS += --enable-gccprofile
 endif
 
 # For now, x86_64 targets can't use PIE
-ifneq ($(CONFIG_TARGET_x86),y)
-  ifeq ($(CONFIG_PKG_ASLR_PIE_ALL),y)
+ifeq ($(CONFIG_PKG_ASLR_PIE_REGULAR),y)
     CONFIGURE_ARGS += --enable-pie
-  else
-    ifeq ($(CONFIG_PKG_ASLR_PIE_REGULAR),y)
-      CONFIGURE_ARGS += --enable-pie
-    endif
-  endif
 endif
 
 ifeq ($(CONFIG_SURICATA_ENABLE_NFQUEUE),y)
@@ -95,6 +92,9 @@ endif
 define Build/Prepare
 	$(call Build/Prepare/Default)
 
+	cd $(PKG_BUILD_DIR) && \
+	  git clone https://github.com/OISF/libhtp.git
+
 	[ -f $(CARGO_HOME)/bin/cbindgen ] || \
 	  $(CONFIGURE_VARS) cargo install --root=$(CARGO_HOME) cbindgen
 
@@ -111,7 +111,7 @@ define Package/suricata6
     SECTION:=net
     CATEGORY:=Network
     DEPENDS:=@!SMALL_FLASH @!LOW_MEMORY_FOOTPRINT +libexpat +jansson +libpcre +libyaml +libpcap +libcap-ng \
-        +nspr +libnss +liblz4 +libatomic +libnet-1.2.x +libhtp \
+        +nspr +libnss +liblz4 +libatomic +libnet-1.2.x \
 	+SURICATA_ENABLE_NFLOG:libnetfilter-log \
   	+SURICATA_ENABLE_NFQUEUE:libnetfilter-queue +SURICATA_ENABLE_NFQUEUE:iptables-mod-nfqueue \
   	+SURICATA_ENABLE_HIREDIS:libhiredis +SURICATA_ENABLE_HIREDIS:libevent2 \

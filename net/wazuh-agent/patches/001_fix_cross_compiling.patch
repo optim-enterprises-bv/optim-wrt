@@ -1,0 +1,13 @@
+Index: wazuh-4.5.2/src/Makefile
+===================================================================
+--- wazuh-4.5.2.orig/src/Makefile
++++ wazuh-4.5.2/src/Makefile
+@@ -967,7 +967,7 @@ $(ZLIB_LIB):
+ ifeq (${TARGET},winagent)
+ 	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
+ else
+-	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure && ${MAKE} libz.a
++	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure $(CONFIGURE_ARGS) && ${MAKE} libz.a
+ endif
+ 
+ ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}

@@ -1,13 +1,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wazuh-agent
-PKG_VERSION:=4.5.2
+PKG_VERSION:=4.7.0
 PKG_RELEASE:=1
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/wazuh-$(PKG_VERSION)
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL=https://codeload.github.com/wazuh/wazuh/tar.gz/v$(PKG_VERSION)?
-PKG_HASH:=0085cff600d12ae1d8c70b03deea99fe30a754d898d4d390f55cd5e62cd8f090
+PKG_HASH:=1c505f66fc28a702f58867e63117ab470eb2ba4dafc84c2fc30a27a2b29cb980
 
 PKG_MAINTAINER:=HaiBac <mail@bacnh.com>
 PKG_LICENSE:=Apache-2.0
@@ -38,10 +38,10 @@ MAKE_FLAGS+= \
 
 define Build/Compile
   cd $(PKG_BUILD_DIR)/src && \
-  export CC="$(TARGET_CC)" && \
-  export CXX="$(TARGET_CXX)" && \
-  $(MAKE) deps EXTERNAL_SRC_ONLY=yes && \
-  $(MAKE) TARGET=agent
+  export TARGET_CONFIGURE_OPTS='$(TARGET_CONFIGURE_OPTS)' && \
+  export CONFIGURE_ARGS='$(CONFIGURE_ARGS)' && \
+  $(MAKE) $(TARGET_CONFIGURE_OPTS) EXTERNAL_SRC_ONLY=yes deps && \
+  $(MAKE) $(TARGET_CONFIGURE_OPTS) TARGET=agent
 endef
 
 define Package/wazuh-agent/install

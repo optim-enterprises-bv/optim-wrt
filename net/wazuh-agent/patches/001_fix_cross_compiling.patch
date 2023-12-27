@@ -1,13 +1,314 @@
-Index: wazuh-4.5.2/src/Makefile
+Index: wazuh-4.7.0/src/Makefile
 ===================================================================
---- wazuh-4.5.2.orig/src/Makefile
-+++ wazuh-4.5.2/src/Makefile
-@@ -967,7 +967,7 @@ $(ZLIB_LIB):
+--- wazuh-4.7.0.orig/src/Makefile	2023-11-23 12:17:53.000000000 +0000
++++ wazuh-4.7.0/src/Makefile	2023-12-27 03:52:37.657911476 +0000
+@@ -9,12 +9,11 @@
+ # (at your option) any later version.
+ #
+ 
+-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+-uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
+-uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
++uname_S := Linux
++uname_P := arm
++uname_R := 4.4.60
+ uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
+-uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
+-
++uname_M := armv7l
+ 
+ ifeq (${TARGET}, winagent)
+ WAZUH_LIB_OUTPUT_PATH := win32/
+@@ -33,12 +32,13 @@
+ LIBSTDCPP_NAME := libstdc++.a
+ LIBGCC_S_NAME := libgcc_s.a
+ else
+-libstdc++_path := $(shell sh -c 'g++ --print-file-name=libstdc++.so.6 2>/dev/null || echo not')
+-libgcc_s_path := $(shell sh -c 'g++ --print-file-name=libgcc_s.so.1 2>/dev/null || echo not')
++libstdc++_path := $(shell sh -c '$(CC) --print-file-name=libstdc++.so.6 2>/dev/null || echo not')
++libgcc_s_path := $(shell sh -c '$(CC) --print-file-name=libgcc_s.so.1 2>/dev/null || echo not')
+ LIBSTDCPP_NAME := libstdc++.so.6
+ LIBGCC_S_NAME := libgcc_s.so.1
++STRIP_TOOL := $(STRIP)
+ endif
+-STRIP_TOOL := strip
++STRIP_TOOL := $(STRIP)
+ endif
+ 
+ ifeq (, $(filter ${libstdc++_path}, not ${LIBSTDCPP_NAME}))
+@@ -183,7 +183,7 @@
+ 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
+ 		AR_LDFLAGS+=-pthread -lrt -ldl
+ 		OSSEC_CFLAGS+=-Wl,--start-group
+-		USE_AUDIT=yes
++		USE_AUDIT=no
+ 		CC=gcc
+ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
+ 		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
+@@ -886,7 +886,7 @@
+ SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
+ JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
+ PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
+-DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-18.1.a
++DB_LIB      = $(EXTERNAL_LIBDB)libdb-18.1.a
+ LIBALPM_LIB  = $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
+ LIBARCHIVE_LIB  = $(EXTERNAL_LIBARCHIVE).libs/libarchive.a
+ LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
+@@ -896,7 +896,7 @@
+ MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
+ BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
+ LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
+-POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
++POPT_LIB = $(EXTERNAL_POPT)src/.libs/libpopt.a
+ RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
+ JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
+ 
+@@ -990,7 +990,7 @@
+ 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-sparcv9-gcc && ${MAKE} build_libs
+ endif
+ else
+-	cd ${EXTERNAL_OPENSSL} && ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
++	cd ${EXTERNAL_OPENSSL} && ${TARGET_CONFIGURE_OPTS} ./Configure linux-armv4 $(OPENSSL_FLAGS) && ${MAKE} $(TARGET_CONFIGURE_OPTS) build_libs
+ endif
+ endif
+ endif
+@@ -1014,7 +1014,7 @@
  ifeq (${TARGET},winagent)
  	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
  else
 -	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure && ${MAKE} libz.a
-+	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure $(CONFIGURE_ARGS) && ${MAKE} libz.a
++	cd ${EXTERNAL_ZLIB} && ${TARGET_CONFIGURE_OPTS} CFLAGS=-fPIC ./configure && ${MAKE} ${TARGET_CONFIGURE_OPTS} libz.a
  endif
  
  ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
+@@ -1062,13 +1062,13 @@
+ #### libyaml ##########
+ 
+ ${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
+-	$(MAKE) -C $(EXTERNAL_LIBYAML)
++	$(MAKE) ${TARGET_CONFIGURE_OPTS} -C $(EXTERNAL_LIBYAML)
+ 
+ $(EXTERNAL_LIBYAML)Makefile:
+ ifeq (${TARGET},winagent)
+ 	cd $(EXTERNAL_LIBYAML) && CC=${MING_BASE}${CC} && CFLAGS=-fPIC ./configure --host=${MINGW_HOST} --enable-static=yes
+ else
+-	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes --enable-shared=no
++	cd $(EXTERNAL_LIBYAML) && ${TARGET_CONFIGURE_OPTS} CFLAGS=-fPIC ./configure --host=x86_64 --enable-static=yes --enable-shared=no
+ endif
+ 
+ #### curl ##########
+@@ -1082,7 +1082,7 @@
+ else
+ $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
+ ifeq (${uname_S},Linux)
+-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --with-ssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-libpsl --without-brotli --without-nghttp2
++	cd $(EXTERNAL_CURL) && ${TARGET_CONFIGURE_OPTS} CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --host=x86_64 --with-ssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-libpsl --without-brotli --without-nghttp2
+ else
+ 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --with-ssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-brotli --without-nghttp2 --without-librtmp
+ endif
+@@ -1113,7 +1113,7 @@
+ 	 ${MAKE} -C $(EXTERNAL_LIBDB) libdb.a
+ 
+ $(EXTERNAL_LIBDB)Makefile:
+-	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics ac_cv_func_pthread_yield=no
++	cd ${EXTERNAL_LIBDB} && ${TARGET_CONFIGURE_OPTS} CPPFLAGS=-fPIC ../dist/configure --host=x86_64 --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics ac_cv_func_pthread_yield=no
+ endif
+ 
+ #### libarchive ######
+@@ -1124,7 +1124,7 @@
+ 	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
+ 
+ $(EXTERNAL_LIBARCHIVE)Makefile:
+-	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl --without-libb2
++	cd ${EXTERNAL_LIBARCHIVE} && ${TARGET_CONFIGURE_OPTS} CPPFLAGS=-fPIC ./configure --host=x86_64 --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl --without-libb2
+ endif
+ endif
+ 
+@@ -1156,10 +1156,10 @@
+ #### Audit lib ####
+ 
+ ${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
+-	${MAKE} -C $(EXTERNAL_AUDIT)lib CC=$(CC)
++	${MAKE} -C $(EXTERNAL_AUDIT)lib
+ 
+ $(EXTERNAL_AUDIT)Makefile:
+-	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
++	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ${TARGET_CONFIGURE_OPTS} ./configure --host=x86_64 CFLAGS=-fPIC --with-libcap-ng=no
+ 
+ #### msgpack #########
+ 
+@@ -1187,17 +1187,13 @@
+ ifeq (${TARGET},winagent)
+ 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --enable-jit=auto --host=${MINGW_HOST} --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
+ else
+-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
++	cd $(EXTERNAL_LIBPCRE2) &&  ${TARGET_CONFIGURE_OPTS} CFLAGS=-fPIC ./configure --host=x86_64 --enable-jit=auto --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE} ${TARGET_CONFIGURE_OPTS}
+ endif
+ 
+ ### popt lib ###
+ 
+-POPT_BUILD_DIR = $(EXTERNAL_POPT)build/
+-
+-$(POPT_LIB): $(POPT_BUILD_DIR)Makefile
+-	 $(MAKE) -C $(POPT_BUILD_DIR)
+-$(POPT_BUILD_DIR)Makefile:
+-	mkdir -p $(POPT_BUILD_DIR) && cd $(POPT_BUILD_DIR) && cmake ..
++$(POPT_LIB):
++	cd $(EXTERNAL_POPT) && ${TARGET_CONFIGURE_OPTS} ./configure --disable-nls --host=x86_64 CFLAGS=-fPIC && ${MAKE} ${TARGET_CONFIGURE_OPTS}
+ 
+ ### rpm lib ###
+ 
+@@ -1214,13 +1210,12 @@
+ 				-L${ROUTE_PATH}/${EXTERNAL_SQLITE}
+ 
+ RPM_CFLAGS = -fPIC ${RPM_INC_PATHS} ${RPM_LIB_PATHS}
+-RPM_CC = gcc
+ 
+ ${RPM_LIB}: ${RPM_BUILD_DIR}/Makefile
+-	cd ${RPM_BUILD_DIR} && ${MAKE}
++	cd ${RPM_BUILD_DIR} && ${MAKE} ENABLE_NLS= ${TARGET_CONFIGURE_OPTS}
+ 
+ ${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${SQLITE_LIB}
+-	mkdir -p ${RPM_BUILD_DIR} && cd ${RPM_BUILD_DIR} && cmake -E env CFLAGS="${RPM_CFLAGS}" CC=${RPM_CC} cmake ..
++	mkdir -p ${RPM_BUILD_DIR} && cd ${RPM_BUILD_DIR} && ${TARGET_CONFIGURE_OPTS} cmake -E env CFLAGS="${RPM_CFLAGS}" ${TARGET_CONFIGURE_OPTS} cmake ..
+ 
+ #### jemalloc ##########
+ 
+@@ -1341,17 +1336,14 @@
+ 	-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
+ else
+ external/$(CPYTHON).tar.gz:
+-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
+-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+-	rm $(patsubst %.gz,%,$@)
++	[ -f $(patsubst external/%,%,$@) ] || $(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
++	cd external && $(TAR) $(patsubst external/%,%,$@)
+ endif
+ else
+ external/$(CPYTHON).tar.gz:
+ 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
+ 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+ 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+-	rm $(patsubst %.gz,%,$@)
+ endif
+ 
+ ifeq (${uname_S},HP-UX)
+@@ -1395,10 +1387,8 @@
+ 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
+ else
+ external/%.tar.gz:
+-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
+-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+-	rm $(patsubst %.gz,%,$@)
++	[ -f $(patsubst external/%,%,$@) ] || $(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
++	cd external && $(TAR) $(patsubst external/%,%,$@)
+ endif
+ 
+ ifneq (,$(PRECOMPILED_RES))
+@@ -1762,6 +1752,7 @@
+ crypto_shared_o := $(crypto_shared_c:.c=.o)
+ 
+ os_crypto/shared/%.o: os_crypto/shared/%.c
++	echo "Compiling $^"
+ 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
+ 
+ crypto_signature_c := $(wildcard os_crypto/signature/*.c)
+@@ -1801,12 +1792,11 @@
+ 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
+ else
+ ifeq (${TARGET}, winagent)
+-$(WAZUHEXT_LIB): $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF)
+-	$(DLLTOOL) -D $(WAZUHEXT_DLL) --def $(WAZUHEXT_LIB_DEF) --output-delaylib $@
+-
+-$(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS) win32/version-dll.o
+-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
++	$(WAZUHEXT_LIB): $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF)
++		$(DLLTOOL) -D $(WAZUHEXT_DLL) --def $(WAZUHEXT_LIB_DEF) --output-delaylib $@
+ 
++	$(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS) win32/version-dll.o
++		$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
+ 
+ else
+ ifeq (${uname_S},SunOS)
+@@ -1815,6 +1805,7 @@
+ else
+ LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
+ endif
++
+ ifeq (${uname_P},sparc)
+ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+ 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+@@ -1825,6 +1816,7 @@
+ else
+ ifneq (,$(filter ${uname_S},AIX HP-UX))
+ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
++	echo "Compiling $^"
+ 	mkdir -p libwazuhext;
+ 	find external/ -name \*.a -exec cp {} libwazuhext/ \;
+ 	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
+@@ -1835,6 +1827,7 @@
+ 
+ else
+ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
++	echo "Compiling $^"
+ 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+ endif
+ endif
+@@ -1934,7 +1927,8 @@
+ 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent -DARGV0=\"wazuh-agentd\" -c $^ -o $@
+ 
+ wazuh-agentd: ${client_agent_o} monitord/rotate_log.o monitord/compress_log.o
+-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
++	echo "Compiling $^"
++	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${EXTERNAL_LIBS} -o $@
+ 
+ #### addagent ######
+ 
+Index: wazuh-4.7.0/src/data_provider/CMakeLists.txt
+===================================================================
+--- wazuh-4.7.0.orig/src/data_provider/CMakeLists.txt	2023-11-23 12:17:53.000000000 +0000
++++ wazuh-4.7.0/src/data_provider/CMakeLists.txt	2023-12-27 03:28:03.550459641 +0000
+@@ -230,5 +230,5 @@
+   if(FSANITIZE)
+       target_link_libraries(sysinfo gcov)
+   endif(FSANITIZE)
+-  add_subdirectory(testtool)
++  # add_subdirectory(testtool)
+ endif(UNIT_TEST)
+Index: wazuh-4.7.0/src/shared_modules/dbsync/CMakeLists.txt
+===================================================================
+--- wazuh-4.7.0.orig/src/shared_modules/dbsync/CMakeLists.txt	2023-11-23 12:17:53.000000000 +0000
++++ wazuh-4.7.0/src/shared_modules/dbsync/CMakeLists.txt	2023-12-27 03:28:03.550459641 +0000
+@@ -104,6 +104,6 @@
+   if(FSANITIZE)
+       target_link_libraries(dbsync gcov)
+   endif(FSANITIZE)
+-  add_subdirectory(example)
+-  add_subdirectory(testtool)
++  # add_subdirectory(example)
++  # add_subdirectory(testtool)
+ endif(NOT DEFINED COVERITY AND NOT DEFINED UNIT_TEST)
+Index: wazuh-4.7.0/src/shared_modules/rsync/CMakeLists.txt
+===================================================================
+--- wazuh-4.7.0.orig/src/shared_modules/rsync/CMakeLists.txt	2023-11-23 12:17:53.000000000 +0000
++++ wazuh-4.7.0/src/shared_modules/rsync/CMakeLists.txt	2023-12-27 03:28:03.550459641 +0000
+@@ -104,5 +104,5 @@
+   if(FSANITIZE)
+     target_link_libraries(rsync gcov)
+   endif(FSANITIZE)
+-  add_subdirectory(testtool)
++  # add_subdirectory(testtool)
+ endif(NOT DEFINED COVERITY AND NOT DEFINED UNIT_TEST)
+Index: wazuh-4.7.0/src/wazuh_modules/syscollector/CMakeLists.txt
+===================================================================
+--- wazuh-4.7.0.orig/src/wazuh_modules/syscollector/CMakeLists.txt	2023-11-23 12:17:53.000000000 +0000
++++ wazuh-4.7.0/src/wazuh_modules/syscollector/CMakeLists.txt	2023-12-27 03:28:03.550459641 +0000
+@@ -116,5 +116,5 @@
+   if(FSANITIZE)
+     target_link_libraries(syscollector gcov)
+   endif(FSANITIZE)
+-  add_subdirectory(testtool)
++  # add_subdirectory(testtool)
+ endif(UNIT_TEST)

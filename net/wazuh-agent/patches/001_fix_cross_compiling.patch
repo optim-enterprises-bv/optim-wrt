@@ -1,7 +1,7 @@
 Index: wazuh-4.7.0/src/Makefile
 ===================================================================
 --- wazuh-4.7.0.orig/src/Makefile	2023-11-23 12:17:53.000000000 +0000
-+++ wazuh-4.7.0/src/Makefile	2023-12-27 03:52:37.657911476 +0000
++++ wazuh-4.7.0/src/Makefile	2023-12-27 04:10:44.557740633 +0000
 @@ -9,12 +9,11 @@
  # (at your option) any later version.
  #
@@ -36,7 +36,17 @@ Index: wazuh-4.7.0/src/Makefile
  endif
  
  ifeq (, $(filter ${libstdc++_path}, not ${LIBSTDCPP_NAME}))
-@@ -183,7 +183,7 @@
+@@ -51,7 +51,8 @@
+ HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
+ CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
+ CHECK_CENTOS5 := $(shell sh -c 'grep "CentOS release 5." /etc/redhat-release 2>&1 > /dev/null && echo YES || echo not')
+-CHECK_ALPINE := $(shell sh -c 'grep "Alpine Linux" /etc/os-release 2>&1 > /dev/null && echo YES || echo not')
++# CHECK_ALPINE := $(shell sh -c 'grep "Alpine Linux" /etc/os-release 2>&1 > /dev/null && echo YES || echo not')
++CHECK_ALPINE := YES
+ 
+ ARCH_FLAGS =
+ 
+@@ -183,7 +184,7 @@
  		OSSEC_LDFLAGS+=-pthread -lrt -ldl
  		AR_LDFLAGS+=-pthread -lrt -ldl
  		OSSEC_CFLAGS+=-Wl,--start-group
@@ -45,7 +55,7 @@ Index: wazuh-4.7.0/src/Makefile
  		CC=gcc
  ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
  		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
-@@ -886,7 +886,7 @@
+@@ -886,7 +887,7 @@
  SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
  JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
  PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
@@ -54,7 +64,7 @@ Index: wazuh-4.7.0/src/Makefile
  LIBALPM_LIB  = $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
  LIBARCHIVE_LIB  = $(EXTERNAL_LIBARCHIVE).libs/libarchive.a
  LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
-@@ -896,7 +896,7 @@
+@@ -896,7 +897,7 @@
  MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
  BZIP2_LIB   = $(EXTERNAL_BZIP2)libbz2.a
  LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
@@ -63,7 +73,7 @@ Index: wazuh-4.7.0/src/Makefile
  RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
  JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
  
-@@ -990,7 +990,7 @@
+@@ -990,7 +991,7 @@
  	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-sparcv9-gcc && ${MAKE} build_libs
  endif
  else
@@ -72,7 +82,7 @@ Index: wazuh-4.7.0/src/Makefile
  endif
  endif
  endif
-@@ -1014,7 +1014,7 @@
+@@ -1014,7 +1015,7 @@
  ifeq (${TARGET},winagent)
  	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
  else
@@ -81,7 +91,7 @@ Index: wazuh-4.7.0/src/Makefile
  endif
  
  ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
-@@ -1062,13 +1062,13 @@
+@@ -1062,13 +1063,13 @@
  #### libyaml ##########
  
  ${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
@@ -97,7 +107,7 @@ Index: wazuh-4.7.0/src/Makefile
  endif
  
  #### curl ##########
-@@ -1082,7 +1082,7 @@
+@@ -1082,7 +1083,7 @@
  else
  $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
  ifeq (${uname_S},Linux)
@@ -106,7 +116,7 @@ Index: wazuh-4.7.0/src/Makefile
  else
  	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --with-ssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-brotli --without-nghttp2 --without-librtmp
  endif
-@@ -1113,7 +1113,7 @@
+@@ -1113,7 +1114,7 @@
  	 ${MAKE} -C $(EXTERNAL_LIBDB) libdb.a
  
  $(EXTERNAL_LIBDB)Makefile:
@@ -115,7 +125,7 @@ Index: wazuh-4.7.0/src/Makefile
  endif
  
  #### libarchive ######
-@@ -1124,7 +1124,7 @@
+@@ -1124,7 +1125,7 @@
  	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
  
  $(EXTERNAL_LIBARCHIVE)Makefile:
@@ -124,7 +134,7 @@ Index: wazuh-4.7.0/src/Makefile
  endif
  endif
  
-@@ -1156,10 +1156,10 @@
+@@ -1156,10 +1157,10 @@
  #### Audit lib ####
  
  ${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
@@ -137,7 +147,7 @@ Index: wazuh-4.7.0/src/Makefile
  
  #### msgpack #########
  
-@@ -1187,17 +1187,13 @@
+@@ -1187,17 +1188,13 @@
  ifeq (${TARGET},winagent)
  	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --enable-jit=auto --host=${MINGW_HOST} --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
  else
@@ -158,7 +168,7 @@ Index: wazuh-4.7.0/src/Makefile
  
  ### rpm lib ###
  
-@@ -1214,13 +1210,12 @@
+@@ -1214,13 +1211,12 @@
  				-L${ROUTE_PATH}/${EXTERNAL_SQLITE}
  
  RPM_CFLAGS = -fPIC ${RPM_INC_PATHS} ${RPM_LIB_PATHS}
@@ -174,7 +184,7 @@ Index: wazuh-4.7.0/src/Makefile
  
  #### jemalloc ##########
  
-@@ -1341,17 +1336,14 @@
+@@ -1341,17 +1337,14 @@
  	-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
  else
  external/$(CPYTHON).tar.gz:
@@ -194,7 +204,7 @@ Index: wazuh-4.7.0/src/Makefile
  endif
  
  ifeq (${uname_S},HP-UX)
-@@ -1395,10 +1387,8 @@
+@@ -1395,10 +1388,8 @@
  	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
  else
  external/%.tar.gz:
@@ -207,7 +217,7 @@ Index: wazuh-4.7.0/src/Makefile
  endif
  
  ifneq (,$(PRECOMPILED_RES))
-@@ -1762,6 +1752,7 @@
+@@ -1762,6 +1753,7 @@
  crypto_shared_o := $(crypto_shared_c:.c=.o)
  
  os_crypto/shared/%.o: os_crypto/shared/%.c
@@ -215,7 +225,7 @@ Index: wazuh-4.7.0/src/Makefile
  	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
  
  crypto_signature_c := $(wildcard os_crypto/signature/*.c)
-@@ -1801,12 +1792,11 @@
+@@ -1801,12 +1793,11 @@
  	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
  else
  ifeq (${TARGET}, winagent)
@@ -232,7 +242,7 @@ Index: wazuh-4.7.0/src/Makefile
  
  else
  ifeq (${uname_S},SunOS)
-@@ -1815,6 +1805,7 @@
+@@ -1815,6 +1806,7 @@
  else
  LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
  endif
@@ -240,7 +250,7 @@ Index: wazuh-4.7.0/src/Makefile
  ifeq (${uname_P},sparc)
  $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
  	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-@@ -1825,6 +1816,7 @@
+@@ -1825,6 +1817,7 @@
  else
  ifneq (,$(filter ${uname_S},AIX HP-UX))
  $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
@@ -248,7 +258,7 @@ Index: wazuh-4.7.0/src/Makefile
  	mkdir -p libwazuhext;
  	find external/ -name \*.a -exec cp {} libwazuhext/ \;
  	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
-@@ -1835,6 +1827,7 @@
+@@ -1835,6 +1828,7 @@
  
  else
  $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
@@ -256,7 +266,7 @@ Index: wazuh-4.7.0/src/Makefile
  	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
  endif
  endif
-@@ -1934,7 +1927,8 @@
+@@ -1934,7 +1928,8 @@
  	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent -DARGV0=\"wazuh-agentd\" -c $^ -o $@
  
  wazuh-agentd: ${client_agent_o} monitord/rotate_log.o monitord/compress_log.o
@@ -269,7 +279,7 @@ Index: wazuh-4.7.0/src/Makefile
 Index: wazuh-4.7.0/src/data_provider/CMakeLists.txt
 ===================================================================
 --- wazuh-4.7.0.orig/src/data_provider/CMakeLists.txt	2023-11-23 12:17:53.000000000 +0000
-+++ wazuh-4.7.0/src/data_provider/CMakeLists.txt	2023-12-27 03:28:03.550459641 +0000
++++ wazuh-4.7.0/src/data_provider/CMakeLists.txt	2023-12-27 04:10:37.345680830 +0000
 @@ -230,5 +230,5 @@
    if(FSANITIZE)
        target_link_libraries(sysinfo gcov)
@@ -280,7 +290,7 @@ Index: wazuh-4.7.0/src/data_provider/CMakeLists.txt
 Index: wazuh-4.7.0/src/shared_modules/dbsync/CMakeLists.txt
 ===================================================================
 --- wazuh-4.7.0.orig/src/shared_modules/dbsync/CMakeLists.txt	2023-11-23 12:17:53.000000000 +0000
-+++ wazuh-4.7.0/src/shared_modules/dbsync/CMakeLists.txt	2023-12-27 03:28:03.550459641 +0000
++++ wazuh-4.7.0/src/shared_modules/dbsync/CMakeLists.txt	2023-12-27 04:10:37.345680830 +0000
 @@ -104,6 +104,6 @@
    if(FSANITIZE)
        target_link_libraries(dbsync gcov)
@@ -293,7 +303,7 @@ Index: wazuh-4.7.0/src/shared_modules/dbsync/CMakeLists.txt
 Index: wazuh-4.7.0/src/shared_modules/rsync/CMakeLists.txt
 ===================================================================
 --- wazuh-4.7.0.orig/src/shared_modules/rsync/CMakeLists.txt	2023-11-23 12:17:53.000000000 +0000
-+++ wazuh-4.7.0/src/shared_modules/rsync/CMakeLists.txt	2023-12-27 03:28:03.550459641 +0000
++++ wazuh-4.7.0/src/shared_modules/rsync/CMakeLists.txt	2023-12-27 04:10:37.345680830 +0000
 @@ -104,5 +104,5 @@
    if(FSANITIZE)
      target_link_libraries(rsync gcov)
@@ -304,7 +314,7 @@ Index: wazuh-4.7.0/src/shared_modules/rsync/CMakeLists.txt
 Index: wazuh-4.7.0/src/wazuh_modules/syscollector/CMakeLists.txt
 ===================================================================
 --- wazuh-4.7.0.orig/src/wazuh_modules/syscollector/CMakeLists.txt	2023-11-23 12:17:53.000000000 +0000
-+++ wazuh-4.7.0/src/wazuh_modules/syscollector/CMakeLists.txt	2023-12-27 03:28:03.550459641 +0000
++++ wazuh-4.7.0/src/wazuh_modules/syscollector/CMakeLists.txt	2023-12-27 04:10:37.345680830 +0000
 @@ -116,5 +116,5 @@
    if(FSANITIZE)
      target_link_libraries(syscollector gcov)

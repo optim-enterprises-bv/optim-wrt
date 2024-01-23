@@ -23,7 +23,7 @@ define Package/wazuh-agent
   CATEGORY:=Network
   TITLE:=Wazuh Agent
   URL:=https://github.com/wazuh/wazuh
-  DEPENDS:=+perl +perlbase-findbin +perlbase-pod +perlbase-storable +perlbase-feature +libpthread +librt
+  DEPENDS:=+perl +perlbase-findbin +perlbase-pod +perlbase-storable +perlbase-feature +libpthread +librt +libintl-full
 endef
 
 define Package/wazuh-agent/description
@@ -40,7 +40,8 @@ define Build/Compile
   cd $(PKG_BUILD_DIR)/src && \
   export TARGET_CONFIGURE_OPTS='$(TARGET_CONFIGURE_OPTS)' && \
   export CONFIGURE_ARGS='$(CONFIGURE_ARGS)' && \
-  $(MAKE) $(TARGET_CONFIGURE_OPTS) EXTERNAL_SRC_ONLY=yes deps && \
+  export TARGET_LDFLAGS='$(TARGET_LDFLAGS)' && \
+  $(MAKE) $(TARGET_CONcFIGURE_OPTS) EXTERNAL_SRC_ONLY=yes deps && \
   $(MAKE) $(TARGET_CONFIGURE_OPTS) TARGET=agent
 endef
 

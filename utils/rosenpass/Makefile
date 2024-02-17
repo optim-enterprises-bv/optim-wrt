@@ -23,19 +23,25 @@ include $(INCLUDE_DIR)/package.mk
 include ${TOPDIR}/feeds/packages/lang/rust/rust-package.mk
 
 define Package/rosenpass
-  SECTION:=utils
-  CATEGORY:=Utilities
-  TITLE:=Rosenpass is a post-quantum-secure VPN that uses WireGuard to transport the actual data.
-  DEPENDS:=$(RUST_ARCH_DEPENDS) +libsodium
-  URL:=rosenpass.eu
+	SECTION:=utils
+	CATEGORY:=Utilities
+	TITLE:=Rosenpass is a post-quantum-secure VPN that uses WireGuard to transport the actual data.
+	DEPENDS:=$(RUST_ARCH_DEPENDS) +libsodium +bash
+	URL:=rosenpass.eu
 endef
 
 define Package/rosenpass/description
-  Rosenpass is a post-quantum-secure VPN that uses WireGuard to transport the actual data.
+	Rosenpass is a post-quantum-secure VPN that uses WireGuard to transport the actual data.
 endef
 
 define Build/Compile
-  $(call Build/Compile/Cargo,rosenpass)
+	$(call Build/Compile/Cargo,rosenpass)
+endef
+
+define Package/rosenpass/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/bin/* $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rp $(1)/usr/bin
 endef
 
 $(eval $(call RustBinPackage,rosenpass))

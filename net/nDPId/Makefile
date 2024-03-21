@@ -6,7 +6,7 @@ PKG_RELEASE:=$(AUTORELEASE)
 
 #PKG_SOURCE:=$(PKG_VERSION).tar.gz
 #PKG_SOURCE_URL:=https://github.com/utoni/nDPId/archive/refs/tags
-#PKG_HASH:=a512d5fbdcdaef01a0c3ee7f6b8870ac9c6c870e11c1a30b782550e2cd247de7
+#PKG_HASH:=33560d64d2f77b7ef181ea6c02d22f21fbe4e91f
 
 # 1.5 Release does not work with current libndpi builds.
 PKG_SOURCE_PROTO:=git

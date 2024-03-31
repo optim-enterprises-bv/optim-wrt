@@ -107,8 +107,8 @@ define Package/suricata
     SUBMENU:=Firewall
     SECTION:=net
     CATEGORY:=Network
-    DEPENDS:=@!SMALL_FLASH @!LOW_MEMORY_FOOTPRINT +libexpat +jansson +libelf +libbpf +libbsd +libpcre2 +libyaml +libpcap +libcap-ng $(ICONV_DEPENDS) $(INTL_DEPENDS) \
-        +nspr +libnss +liblz4 +libatomic +libnet-1.2.x \
+    DEPENDS:=@!SMALL_FLASH @!LOW_MEMORY_FOOTPRINT +libexpat +jansson +libelf +libbpf $(BPF_DEPENDS) +libbsd +libpcre2 +libyaml +libpcap +libcap-ng $(ICONV_DEPENDS) $(INTL_DEPENDS) \
+        +nspr +libnss +liblz4 +libatomic +libnet-1.2.x +libxdp +libnfnetlink +libunwind +zlib \
 	+SURICATA_ENABLE_NFLOG:libnetfilter-log \
   	+SURICATA_ENABLE_NFQUEUE:libnetfilter-queue +SURICATA_ENABLE_NFQUEUE:iptables-mod-nfqueue \
   	+SURICATA_ENABLE_HIREDIS:libhiredis +SURICATA_ENABLE_HIREDIS:libevent2 \

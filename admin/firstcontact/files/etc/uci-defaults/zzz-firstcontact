@@ -1,0 +1,3 @@
+#!/bin/sh
+[ -f "/etc/ucentral/gateway.json" ] && /etc/init.d/firstcontact disable
+[ -f "/etc/ucentral/gateway.json" ] || /etc/init.d/ucentral disable

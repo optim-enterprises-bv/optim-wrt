@@ -1,0 +1,218 @@
+#!/usr/bin/ucode
+
+'use strict';
+
+import * as libubus from 'ubus';
+import * as libuci from 'uci';
+import * as uloop from 'uloop';
+import * as nl80211 from 'nl80211';
+import * as rtnl from 'rtnl';
+import * as fs from 'fs';
+import { ulog_open, ulog, ULOG_SYSLOG, ULOG_STDIO, LOG_DAEMON, LOG_INFO } from 'log';
+
+ulog_open(ULOG_SYSLOG, LOG_DAEMON, "state");
+
+uloop.init();
+
+let ubus = libubus.connect();
+let uci = libuci.cursor();
+let config;
+let offline_timer;
+let current_state;
+
+function self_healing() {
+
+}
+
+let healthcheck;
+healthcheck = {
+	run: function(delay) {
+		if (healthcheck.pid)
+			healthcheck.pid.delete();
+		ulog(LOG_INFO, 'start healthcheck in ' + delay / 1000 + ' seconds\n');
+		if (healthcheck.interval)
+			healthcheck.interval.set(delay);
+		else
+			healthcheck.interval = uloop.interval(delay, healthcheck.spawn);
+	},
+
+	complete: function() {
+		self_healing();
+	},
+
+	spawn: function() {
+		ulog(LOG_INFO, 'healtcheck execute\n');
+		healthcheck.pid = uloop.process('/usr/share/ucentral/health.uc', [], {}, healthcheck.complete);
+	},
+};
+
+let state;
+state = {
+	run: function(delay) {
+		if (state.pid)
+			state.pid.delete();
+		ulog(LOG_INFO, 'start state in ' + delay / 1000 + ' seconds\n');
+		if (state.interval)
+			state.interval.set(delay);
+		else
+			state.interval = uloop.interval(delay, state.spawn);
+	},
+
+	complete: function() {
+	},
+
+	spawn: function() {
+		ulog(LOG_INFO, 'state execute\n');
+		state.pid = uloop.process('/usr/share/ucentral/state.uc', [], {}, state.complete);
+	},
+};
+
+function offline_handler() {
+	let status = ubus.call('ucentral', 'status');
+	if (status?.connected)
+		return;
+	ulog(LOG_INFO, 'going offline\n');
+	ubus.call('network.interface.admin_ui', 'up');
+}
+
+function online_handler() {
+	ulog(LOG_INFO, 'going online\n');
+	ubus.call('network.interface.admin_ui', 'down');
+	if (offline_timer) {
+		offline_timer.cancel();
+	}
+}
+
+function config_load() {
+	ulog(LOG_INFO, 'loading config\n');
+	uci.load('state');
+	config = uci.get_all('state');
+
+	if (healthcheck?.interval)
+		healthcheck.interval.cancel();
+	if (config?.health?.interval)
+		healthcheck.run(config?.health?.interval * 1000);
+
+	if (state?.interval)
+		state.interval.cancel();
+	if (config?.stats?.interval)
+		state.run(config?.stats?.interval * 1000);
+
+	let status = ubus.call('ucentral', 'status');
+	if (status?.connected)
+		online_handler();
+	else if (config.ui.offline_trigger)
+		offline_timer = uloop.timer(config.ui.offline_trigger * 1000, offline_handler);
+}
+
+function led_write(led, property, value) {
+	let path = '/sys/class/leds/' + led + '/' + property;
+	let current = trim(fs.readfile(path));
+	if (current == value)
+		return;
+	let file = fs.open(path, 'w');
+	if (!file)
+		return;
+	file.write(value);
+	file.close();
+}
+
+function led_find(alias) {
+	let path = fs.readfile('/proc/device-tree/aliases/' + alias);
+	if (!path)
+		return;
+	return trim(fs.readfile('/proc/device-tree/' + trim(path) + '/label'));
+}
+
+function factory_reset_timeout() {
+	let led = led_find('led-running');
+	if (led)
+		led_write(led, 'trigger', 'default-on');
+}
+
+let blink_timer;
+function blink_timeout() {
+	if (!blink_timer)
+		return;
+	blink_timer.cancel();
+	blink_timer = null;
+	system('/etc/init.d/led turnon');
+}
+
+let state_handler = {
+	offline: function() {
+		let led = led_find('led-running');
+		if (!led)
+			return ubus.STATUS_INVALID_ARGUMENT;
+		led_write(led, 'trigger', 'heartbeat');
+		if (config.ui.offline_trigger) {
+			if (offline_timer)
+				offline_timer.cancel();
+			offline_timer = uloop.timer(config.ui.offline_trigger * 1000, offline_handler);
+		}
+		return 0;
+	},
+
+	online: function() {
+		let led = led_find('led-running');
+		if (!led)
+			return ubus.STATUS_INVALID_ARGUMENT;
+		led_write(led, 'trigger', 'default-on');
+		online_handler();
+		return 0;
+	},
+
+	'factory-reset': function() {
+		let led = led_find('led-running');
+		if (!led)
+			return ubus.STATUS_INVALID_ARGUMENT;
+		led_write(led, 'trigger', 'timer');
+		led_write(led, 'delay_on', '100');
+		led_write(led, 'delay_off', '100');
+		uloop.timer(6000, factory_reset_timeout);
+		return 0;	
+	},
+
+	blink: function(args) {
+		system('/etc/init.d/led blink');
+		blink_timer = uloop.timer((args.duration || 10) * 1000, blink_timeout);
+		return 0;
+	},
+};
+
+let ubus_methods = {
+	set: {
+		call: function(req) {
+			ulog(LOG_INFO, 'state %s -> %s\n', current_state, req.args.state);
+			if (current_state == req.args.state)
+				return;
+			if (!state_handler[req.args.state])
+				return ubus.STATUS_INVALID_ARGUMENT;
+			current_state = req.args.state;
+			blink_timeout();
+			ulog(LOG_INFO, 'set state -> ' + req.args.state + '\n');
+			
+			return state_handler[req.args.state](req.args);
+		},
+		args: {
+			state:'',
+			duration: 0
+		}
+	},
+
+	reload: {
+		call: function(req) {
+			config_load();
+			return 0;
+		},
+		args: {
+
+		}
+	},
+};
+
+ubus.publish('state', ubus_methods);
+config_load();
+
+uloop.run();
+uloop.done();

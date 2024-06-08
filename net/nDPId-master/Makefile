@@ -5,8 +5,8 @@ PKG_VERSION:=1.5
 PKG_RELEASE:=$(AUTORELEASE)
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/utoni/nDPId.git
-PKG_SOURCE_VERSION:=53126a0af9341d609247ef63b494c44b33a93baf
+PKG_SOURCE_URL:=git@github.com:outbackdingo/nDPId.git
+PKG_SOURCE_VERSION:=7969cd632f0357adebf77aebcd2764a525e609ce
 PKG_HASH:=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)

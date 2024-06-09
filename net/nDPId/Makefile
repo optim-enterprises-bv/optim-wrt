@@ -11,7 +11,7 @@ PKG_RELEASE:=$(AUTORELEASE)
 # 1.5 Release does not work with current libndpi builds.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/utoni/nDPId.git
-PKG_SOURCE_VERSION:=53126a0af9341d609247ef63b494c44b33a93baf
+PKG_SOURCE_VERSION:=1fbfd46fe81890b6ff82f1b7faf863379c20ce67
 PKG_HASH:=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)

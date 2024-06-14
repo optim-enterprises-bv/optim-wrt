@@ -4,12 +4,12 @@ PKG_NAME:=nDPId-testing
 PKG_VERSION:=1.0
 PKG_RELEASE:=$(AUTORELEASE)
 
-ifneq ($(wildcard /artifacts),)
-PKG_DIRECTORY:=/artifacts
-else
-PKG_DIRECTORY:=../../../..
-endif
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+# 1.0 Release does not work with current libndpi builds.
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_URL:=git@github.com:outbackdingo/nDPId.git
+PKG_SOURCE_VERSION:=a1ae1a33216988f97beaeaaab2945a8316705656
+PKG_HASH:=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 
 PKG_MAINTAINER:=Toni
@@ -71,7 +71,7 @@ config NDPID_TESTING_PFRING
 endef
 
 CMAKE_OPTIONS += -DBUILD_EXAMPLES=ON
-CMAKE_OPTIONS += -DBUILD_NDPI=OFF
+CMAKE_OPTIONS += -DBUILD_NDPI=ON
 CMAKE_OPTIONS += -DNDPI_NO_PKGCONFIG=ON
 CMAKE_OPTIONS += -DENABLE_ZLIB=ON
 CMAKE_OPTIONS += -DENABLE_SANITIZER=OFF
@@ -84,7 +84,7 @@ TARGET_CFLAGS += -Werror
 
 ifneq ($(CONFIG_NDPID_TESTING_PFRING),)
 CMAKE_OPTIONS += -DENABLE_PFRING=ON \
-	-DPFRING_KERNEL_INC="$(KERNEL_BUILD_DIR)/PF_RING-8.4.0/kernel" \
+	-DPFRING_KERNEL_INC="$(KERNEL_BUILD_DIR)/libpfring-8.6.1/kernel/" \
 	-DPFRING_INSTALLDIR="$(STAGING_DIR)/usr" \
 	-DPFRING_LINK_STATIC=OFF
 endif
@@ -131,20 +131,6 @@ define Package/nDPId-testing/get-and-build-libndpi
 		$(PKG_BUILD_DIR)/scripts/get-and-build-libndpi.sh
 endef
 endif
-
-define Build/Prepare
-	@rm -f '$(DL_DIR)/$(PKG_SOURCE)'
-	@rm -rf '$(PKG_BUILD_DIR)/*'
-	@echo 'tar: $(DL_DIR)/$(PKG_SOURCE)'
-	@echo 'pwd: $(shell pwd)'
-	@echo 'PKG_DIRECTORY=$(PKG_DIRECTORY)'
-	@echo 'PKG_SOURCE_SUBDIR=$(PKG_SOURCE_SUBDIR)'
-	cd '$(PKG_DIRECTORY)' && git archive --prefix '$(PKG_SOURCE_SUBDIR)/' -o '$(DL_DIR)/new_$(PKG_SOURCE)' HEAD
-	mv '$(DL_DIR)/new_$(PKG_SOURCE)' '$(DL_DIR)/$(PKG_SOURCE)'; \
-	$(PKG_UNPACK)
-	cd '$(PKG_BUILD_DIR)' && patch -p1 < $(PKG_BUILD_DIR)/packages/openwrt/net/nDPId-testing/001-enable-in-source-build.patch
-	$(call Package/nDPId-testing/get-and-build-libndpi)
-endef
 
 define Package/nDPId-testing/install
 	$(INSTALL_DIR) $(1)/usr/sbin

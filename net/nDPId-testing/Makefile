@@ -12,6 +12,7 @@ PKG_HASH:=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 
+
 PKG_MAINTAINER:=Toni
 PKG_LICENSE:=GPL-3
 PKG_LICENSE_FILES:=COPYING
@@ -71,7 +72,7 @@ config NDPID_TESTING_PFRING
 endef
 
 CMAKE_OPTIONS += -DBUILD_EXAMPLES=ON
-CMAKE_OPTIONS += -DBUILD_NDPI=ON
+CMAKE_OPTIONS += -DBUILD_NDPI=OFF
 CMAKE_OPTIONS += -DNDPI_NO_PKGCONFIG=ON
 CMAKE_OPTIONS += -DENABLE_ZLIB=ON
 CMAKE_OPTIONS += -DENABLE_SANITIZER=OFF
@@ -84,7 +85,7 @@ TARGET_CFLAGS += -Werror
 
 ifneq ($(CONFIG_NDPID_TESTING_PFRING),)
 CMAKE_OPTIONS += -DENABLE_PFRING=ON \
-	-DPFRING_KERNEL_INC="$(KERNEL_BUILD_DIR)/libpfring-8.6.1/kernel/" \
+	-DPFRING_KERNEL_INC="$(KERNEL_BUILD_DIR)/libpfring-8.6.1/kernel" \
 	-DPFRING_INSTALLDIR="$(STAGING_DIR)/usr" \
 	-DPFRING_LINK_STATIC=OFF
 endif
@@ -131,6 +132,21 @@ define Package/nDPId-testing/get-and-build-libndpi
 		$(PKG_BUILD_DIR)/scripts/get-and-build-libndpi.sh
 endef
 endif
+
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	$(PKG_UNPACK)
+	$(Build/Patch)
+	env \
+		CC="$(TARGET_CC)" \
+		AR="$(TARGET_AR)" \
+		RANLIB="$(TARGET_RANLIB)" \
+		CFLAGS="$(TARGET_CFLAGS)" \
+		CPPFLAGS="$(TARGET_CPPFLAGS)" \
+		LDFLAGS="$(TARGET_LDFLAGS)" \
+		MAKE_PROGRAM="$(MAKE)" \
+		$(PKG_BUILD_DIR)/scripts/get-and-build-libndpi.sh
+endef
 
 define Package/nDPId-testing/install
 	$(INSTALL_DIR) $(1)/usr/sbin

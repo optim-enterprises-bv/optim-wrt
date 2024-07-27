@@ -1,0 +1,21 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // gdbpath: $TOOLCHAIN_DIR/bin/arm-openwrt-linux-gdb
+    // exe: $STAGING_DIR/../../build_dir/target-arm_cortex-a7_musl_eabi/oafd/oafd
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Debug oafd",
+            "gdbpath": "/home/bacnh/tip/wlan-ap/openwrt/staging_dir/target-arm_cortex-a7_musl_eabi/../toolchain-arm_cortex-a7_gcc-5.5.0_musl_eabi/bin/arm-openwrt-linux-gdb",
+            "executable": "/home/bacnh/tip/wlan-ap/openwrt/staging_dir/target-arm_cortex-a7_musl_eabi/../../build_dir/target-arm_cortex-a7_musl_eabi/oafd/oafd",
+            "target": "192.168.11.160:9000",
+            "remote": true,
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText"
+        }
+    ]
+}

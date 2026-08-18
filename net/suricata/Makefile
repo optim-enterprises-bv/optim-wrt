@@ -1,14 +1,20 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=suricata
-PKG_VERSION:=8.0.0
+PKG_VERSION:=8.0.6
 PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/OISF/suricata.git
-PKG_MIRROR_HASH:=467f6bf4bae16f1a82952c5959f9fb4246c98b999184fa03efc784312e82c92b
-PKG_SOURCE_DATE:=2024-03-27
-PKG_SOURCE_VERSION:=ee50fe4c30b26f30fdb82dbdac1d48a4a4159966
+# TODO(before merge): replace with the real mirror hash emitted by the first
+# `make package/suricata/download` on this pin. Left as `skip` rather than
+# carrying over the stale 8.0.0 hash, which would fail verification outright.
+PKG_MIRROR_HASH:=skip
+# Release tag suricata-8.0.6. The previous pin was an untagged 2024-03-27
+# development commit on the 8.0 branch that predates the 8.0.0 release itself,
+# so it carried none of the 8.0.x security fixes.
+PKG_SOURCE_DATE:=2026-07-07
+PKG_SOURCE_VERSION:=4c28cc1b4ac64f48efdca6ce3e09748227a04a7e
 
 PKG_CONFIG_DEPENDS:=CONFIG_KERNEL_XDP_SOCKETS
 

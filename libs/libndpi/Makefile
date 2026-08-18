@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=libndpi
-PKG_VERSION:=4.9
+PKG_VERSION:=5.0
 PKG_RELEASE:=1
 
 #PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
@@ -16,10 +16,11 @@ PKG_RELEASE:=1
 #PKG_HASH:=142c8f5afb90629762920db6703831826513e00b
 #PKG_BUILD_DIR:=$(BUILD_DIR)/nDPI-$(PKG_VERSION)
 
-# 1.5 Release does not work with current libndpi builds.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ntop/nDPI.git
-PKG_SOURCE_VERSION:=142c8f5afb90629762920db6703831826513e00b
+# ntop/nDPI tag 5.0 (2025-11-17). Previous pin 142c8f5 was an untagged 4.9-era
+# commit.
+PKG_SOURCE_VERSION:=375f99ef9fb4999d778b57bbeece171b3fa9fba6
 PKG_HASH:=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)

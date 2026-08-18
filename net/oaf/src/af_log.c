@@ -6,17 +6,22 @@
 #include <linux/sysctl.h>
 #include "app_filter.h"
 #include "af_log.h"
-
 int af_log_lvl = 1;
 int af_test_mode = 0;
-
 // todo: rename af_log.c
-int g_oaf_enable __read_mostly = 0;
+int g_oaf_filter_enable __read_mostly = 0;
+int g_oaf_record_enable __read_mostly = 0;
+int g_by_pass_accl = 1;
+int g_user_mode = 0;
 int af_work_mode = AF_MODE_GATEWAY;
 unsigned int af_lan_ip = 0;
 unsigned int af_lan_mask = 0;
-char af_lan_if[IFNAMSIZ] = {0};
-
+char g_lan_ifname[64] = "br-lan";
+int g_tcp_rst = 1;
+int g_feature_init = 0;
+char g_oaf_version[64] = AF_VERSION;
+int g_disable_quic = 0;
+int g_app_filter_mode = 0; // 0 = specified apps, 1 = all apps
 /* 
 	cat /proc/sys/oaf/debug
 */
@@ -29,6 +34,20 @@ static struct ctl_table oaf_table[] = {
 		.proc_handler	= proc_dointvec,
 	},
 	{
+		.procname	= "feature_init",
+		.data		= &g_feature_init,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "version",
+		.data		= g_oaf_version,
+		.maxlen 	= 64,
+		.mode		= 0444,
+		.proc_handler = proc_dostring,
+	},
+	{
 		.procname	= "test_mode",
 		.data		= &af_test_mode,
 		.maxlen 	= sizeof(int),
@@ -37,7 +56,42 @@ static struct ctl_table oaf_table[] = {
 	},
 	{
 		.procname	= "enable",
-		.data		= &g_oaf_enable,
+		.data		= &g_oaf_filter_enable,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "by_pass_accl",
+		.data		= &g_by_pass_accl,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "tcp_rst",
+		.data		= &g_tcp_rst,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "lan_ifname",
+		.data		= g_lan_ifname,
+		.maxlen 	= 64,
+		.mode		= 0666,
+		.proc_handler = proc_dostring,
+	},
+	{
+		.procname	= "record_enable",
+		.data		= &g_oaf_record_enable,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "user_mode",
+		.data		= &g_user_mode,
 		.maxlen 	= sizeof(int),
 		.mode		= 0666,
 		.proc_handler	= proc_dointvec,
@@ -48,13 +102,6 @@ static struct ctl_table oaf_table[] = {
 		.maxlen 	= sizeof(int),
 		.mode		= 0666,
 		.proc_handler	= proc_dointvec,
-	},
-	{
-		.procname	= "lan_if",
-		.data		= &af_lan_if,
-		.maxlen 	= sizeof(af_lan_if),
-		.mode		= 0666,
-		.proc_handler	= proc_dostring,
 	},
 	{
 		.procname	= "lan_ip",
@@ -71,14 +118,33 @@ static struct ctl_table oaf_table[] = {
 		.proc_handler = proc_douintvec,
 	},
 	{
+		.procname	= "disable_quic",
+		.data		= &g_disable_quic,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "app_filter_mode",
+		.data		= &g_app_filter_mode,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler	= proc_dointvec,
+	},
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0))
+	{
 	}
+#endif
 };
+#define OAF_SYS_PROC_DIR "oaf"
 
 static struct ctl_table oaf_root_table[] = {
 	{
-		.procname	= "oaf",
+		.procname	= OAF_SYS_PROC_DIR,
 		.mode		= 0555,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0))
 		.child		= oaf_table,
+#endif
 	},
 	{}
 };
@@ -87,12 +153,15 @@ static struct ctl_table_header *oaf_table_header;
 
 static int af_init_log_sysctl(void)
 {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0))
 	oaf_table_header = register_sysctl_table(oaf_root_table);
+#else
+	oaf_table_header = register_sysctl(OAF_SYS_PROC_DIR, oaf_table);
+#endif
 	if (oaf_table_header == NULL){
 		printk("init log sysctl...failed\n");
 		return -ENOMEM;
 	}
-	printk("init oaf sysctl...ok\n");
 	return 0;
 }
 

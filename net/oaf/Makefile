@@ -33,9 +33,19 @@ MAKE_OPTS:= \
 	EXTRA_CFLAGS="$(EXTRA_CFLAGS)" \
 	$(EXTRA_KCONFIG)
 
+# 2016-era buildsystems lack the modern ./src auto-copy in Build/Prepare/Default
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) ./src/* $(PKG_BUILD_DIR)/
+endef
+
 define Build/Compile
 	$(MAKE) -C "$(LINUX_DIR)" \
-		$(MAKE_OPTS) \
+		CROSS_COMPILE="$(TARGET_CROSS)" \
+		ARCH="$(LINUX_KARCH)" \
+		M="$(PKG_BUILD_DIR)" \
+		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" \
+		$(EXTRA_KCONFIG) \
 		modules
 endef
 

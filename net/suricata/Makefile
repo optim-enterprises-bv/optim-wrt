@@ -1,14 +1,24 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=suricata
-PKG_VERSION:=8.0.0
+PKG_VERSION:=8.0.6
 PKG_RELEASE:=1
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/OISF/suricata.git
-PKG_MIRROR_HASH:=467f6bf4bae16f1a82952c5959f9fb4246c98b999184fa03efc784312e82c92b
-PKG_SOURCE_DATE:=2024-03-27
-PKG_SOURCE_VERSION:=ee50fe4c30b26f30fdb82dbdac1d48a4a4159966
+# Official OISF release tarball rather than a git checkout. The previous pin was
+# an untagged 2024-03-27 development commit on the 8.0 branch predating the 8.0.0
+# release itself, so it carried none of the 8.0.x security fixes.
+#
+# PKG_HASH below is the sha256 of the signed release artifact, verified twice
+# independently, and GPG-verified: "Good signature from Open Information Security
+# Foundation (OISF) <releases@openinfosecfoundation.org>", RSA key
+# B36FDAF2607E10E8FFA89E5E2BA9C98CCDF1E93A (keys.openpgp.org).
+#
+# A signed release artifact is stronger provenance than a mirror checksum over a
+# tarball we generate ourselves from a clone. It also removes network I/O from
+# Build/Configure — see the note there.
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://www.openinfosecfoundation.org/download
+PKG_HASH:=b264584edda4a3b2b462050099c7c54f4f35ac0c7164e41084be9b216c090f8c
 
 PKG_CONFIG_DEPENDS:=CONFIG_KERNEL_XDP_SOCKETS
 
@@ -88,11 +98,20 @@ ifeq ($(CONFIG_SURICATA_ENABLE_NFLOG),y)
 CONFIGURE_ARGS += --enable-nflog
 endif
 
+# scripts/bundle.sh and autogen.sh were required by the git-checkout flow and are
+# both unnecessary against the release tarball, which ships:
+#   - rust/vendor/ (9933 vendored cargo entries) — configure detects it and pins
+#     cargo offline, so no network fetch mid-compile
+#   - a pre-generated ./configure — autogen.sh has nothing to do
+#   - suricata-update/ bundled in-tree — bundle.sh has nothing to fetch
+# (8.x also dropped libhtp for the Rust htp crate, which is inside rust/vendor.)
+#
+# Removing them is not just simplification: bundle.sh performed network I/O during
+# Build/Configure, which breaks offline and reproducible builds.
 define Build/Configure
 	( \
 		$(CONFIGURE_VARS) cargo install --force --root $(STAGING_DIR)/host cbindgen ; \
-		cd $(PKG_BUILD_DIR) && $(CONFIGURE_VARS) ./scripts/bundle.sh ; \
-		cd $(PKG_BUILD_DIR) && $(CONFIGURE_VARS) ./autogen.sh && $(CONFIGURE_VARS) ./configure $(CONFIGURE_ARGS) ; \
+		cd $(PKG_BUILD_DIR) && $(CONFIGURE_VARS) ./configure $(CONFIGURE_ARGS) ; \
 	)
 	$(call Build/Configure/Default)
 endef

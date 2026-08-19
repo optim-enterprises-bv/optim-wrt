@@ -1,13 +1,15 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=nDPId-testing
-PKG_VERSION:=1.0
+PKG_VERSION:=1.7
 PKG_RELEASE:=$(AUTORELEASE)
 
-# 1.0 Release does not work with current libndpi builds.
+# Track upstream utoni/nDPId over HTTPS. The previous pin was a personal fork
+# reached over an SSH remote (git@github.com:outbackdingo/nDPId.git) which no
+# longer exists, so the package was unbuildable for everyone, not just CI.
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=git@github.com:outbackdingo/nDPId.git
-PKG_SOURCE_VERSION:=a1ae1a33216988f97beaeaaab2945a8316705656
+PKG_SOURCE_URL:=https://github.com/utoni/nDPId.git
+PKG_SOURCE_VERSION:=9969f955dc0062582256570960277ad86f40523b
 PKG_HASH:=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)

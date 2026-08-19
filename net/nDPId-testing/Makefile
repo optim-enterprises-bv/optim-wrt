@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=nDPId-testing
-PKG_VERSION:=1.7
+PKG_VERSION:=1.7-84285ae
 PKG_RELEASE:=$(AUTORELEASE)
 
 # Track upstream utoni/nDPId over HTTPS. The previous pin was a personal fork
@@ -9,7 +9,12 @@ PKG_RELEASE:=$(AUTORELEASE)
 # longer exists, so the package was unbuildable for everyone, not just CI.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/utoni/nDPId.git
-PKG_SOURCE_VERSION:=9969f955dc0062582256570960277ad86f40523b
+# NOT the 1.7 tag: nDPId 1.7 (9969f955) calls the TWO-argument ndpi_unset_risk,
+# which libndpi 5.0 replaced with a three-argument form. Pinning the tag alongside
+# libndpi 5.0 — as this feed did after the version bump — produces a package that
+# cannot compile against its own dependency. This commit is upstream HEAD at
+# 2026-06-10, whose source uses the 5.0 API.
+PKG_SOURCE_VERSION:=84285ae42d8f70c976a6ee9be6ceb935aa215b18
 PKG_HASH:=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)

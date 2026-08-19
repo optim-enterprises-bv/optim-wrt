@@ -1,3 +1,6 @@
-
-# OMC agent runtime state — operational artifacts, never repo content.
+# Agent runtime state — operational artifacts, never repo content.
+#
+# These are created by agent tooling in whatever directory a shell command runs,
+# so they appear at the repo root and inside package directories alike. They carry
+# session identifiers and change on every command.
 **/.omc/

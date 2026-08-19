@@ -9,8 +9,8 @@ PKG_RELEASE:=$(AUTORELEASE)
 # longer exists, so the package was unbuildable for everyone, not just CI.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/utoni/nDPId.git
-PKG_SOURCE_VERSION:=9969f955dc0062582256570960277ad86f40523b
-PKG_HASH:=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+PKG_SOURCE_VERSION:=84285ae42d8f70c976a6ee9be6ceb935aa215b18
+PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 
@@ -29,7 +29,7 @@ define Package/nDPId-testing
  TITLE:=nDPId is a tiny nDPI based daemons / toolkit (nDPId source repository)
  SECTION:=net
  CATEGORY:=Network
- DEPENDS:=@!SMALL_FLASH @!LOW_MEMORY_FOOTPRINT +libpcap +zlib +LIBNDPI_GCRYPT:libgcrypt +NDPID_TESTING_INFLUXDB:libcurl +NDPID_TESTING_PFRING:libpfring
+ DEPENDS:=@!SMALL_FLASH @!LOW_MEMORY_FOOTPRINT +libpcap +zlib +libndpi +LIBNDPI_GCRYPT:libgcrypt +NDPID_TESTING_INFLUXDB:libcurl +NDPID_TESTING_PFRING:libpfring
  URL:=http://github.com/lnslbrty/nDPId
 endef
 
@@ -75,15 +75,14 @@ endef
 
 CMAKE_OPTIONS += -DBUILD_EXAMPLES=ON
 CMAKE_OPTIONS += -DBUILD_NDPI=OFF
-CMAKE_OPTIONS += -DNDPI_NO_PKGCONFIG=ON
+CMAKE_OPTIONS += -DNDPI_NO_PKGCONFIG=OFF
 CMAKE_OPTIONS += -DENABLE_ZLIB=ON
 CMAKE_OPTIONS += -DENABLE_SANITIZER=OFF
 CMAKE_OPTIONS += -DENABLE_MEMORY_PROFILING=OFF
 CMAKE_OPTIONS += -DNEED_LINKING_AGAINST_LIBM=ON
-CMAKE_OPTIONS += -DSTATIC_LIBNDPI_INSTALLDIR="$(PKG_BUILD_DIR)/libnDPI/install"
 
-TARGET_CFLAGS += -DLIBNDPI_STATIC=1
-TARGET_CFLAGS += -Werror
+# LIBNDPI_STATIC dropped: linking system shared libndpi 5.0
+# -Werror dropped: strict-aliasing warnings in the test tool vs GCC 5.2
 
 ifneq ($(CONFIG_NDPID_TESTING_PFRING),)
 CMAKE_OPTIONS += -DENABLE_PFRING=ON \
@@ -137,17 +136,9 @@ endif
 
 define Build/Prepare
 	$(call Build/Prepare/Default)
-	$(PKG_UNPACK)
-	$(Build/Patch)
-	env \
-		CC="$(TARGET_CC)" \
-		AR="$(TARGET_AR)" \
-		RANLIB="$(TARGET_RANLIB)" \
-		CFLAGS="$(TARGET_CFLAGS)" \
-		CPPFLAGS="$(TARGET_CPPFLAGS)" \
-		LDFLAGS="$(TARGET_LDFLAGS)" \
-		MAKE_PROGRAM="$(MAKE)" \
-		$(PKG_BUILD_DIR)/scripts/get-and-build-libndpi.sh
+	# Link against the feed's system libndpi 5.0 (in staging) rather than the
+	# vendored get-and-build-libndpi.sh fetch+autogen, which fails on the
+	# 2016-era QSDK autotools. DBUILD_NDPI=OFF + pkgconfig picks up the .pc.
 endef
 
 define Package/nDPId-testing/install

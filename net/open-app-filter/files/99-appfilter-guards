@@ -1,0 +1,32 @@
+#!/bin/sh
+# Open App Filter guards that must be on for filtering to observe traffic at all.
+#
+# Upstream ships BOTH of these as '0'. On hardware with an accelerated datapath
+# that combination produces a device where app filtering is configured, reports
+# healthy, and blocks nothing — the failure is completely silent, which is why
+# this ships as a default rather than as documentation.
+#
+#   disable_hnat  Hardware NAT offload bypasses the oaf.ko kernel module. On IPQ
+#                 targets with HNAT enabled the module is never handed the
+#                 packets, so no classification happens and no rule can match.
+#
+#   disable_quic  QUIC/HTTP-3 conceals the TLS SNI that OAF's Host-based matching
+#                 reads. Without this, QUIC-capable clients (Chrome, YouTube) are
+#                 unclassifiable and pass unfiltered. Setting it does not break
+#                 connectivity: clients fall back to TCP/TLS 1.3, marginally
+#                 slower and fully functional, and then classify normally.
+#
+# Both are deliberate, documented trade-offs. An operator who wants QUIC left
+# intact can override:
+#     uci set appfilter.global.disable_quic=0 && uci commit appfilter
+# accepting that QUIC traffic is then invisible to the filter.
+
+[ -f /etc/config/appfilter ] || exit 0
+
+uci -q batch <<-EOT >/dev/null
+	set appfilter.global.disable_hnat='1'
+	set appfilter.global.disable_quic='1'
+	commit appfilter
+EOT
+
+exit 0

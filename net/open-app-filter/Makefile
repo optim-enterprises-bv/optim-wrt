@@ -55,6 +55,10 @@ define Package/appfilter/install
 	$(INSTALL_DATA) ./files/user_info.config $(1)/etc/config/user_info
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/oafd $(1)/usr/bin
 	$(INSTALL_BIN) ./files/hnat.sh $(1)/usr/bin
+	# Guards that must be on for filtering to observe traffic on an accelerated
+	# datapath. Upstream ships both as 0; see the script for why that is silent.
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/99-appfilter-guards $(1)/etc/uci-defaults/99-appfilter-guards
 endef
 
 

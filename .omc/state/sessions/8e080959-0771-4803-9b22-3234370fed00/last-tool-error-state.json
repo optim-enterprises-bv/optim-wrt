@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"sed -n '28,42p' crates/connection-manager/src/opensync.rs; echo \\\"=== build_transact shape ===\\\"; sed -n '259,300p' crates/connection-manager/src/opensync.rs\",\"description\":\"Read the monit...",
-  "error": "Exit code 2\nsed: can't read crates/connection-manager/src/opensync.rs: No such file or directory\n=== build_transact shape ===\nsed: can't read crates/connection-manager/src/opensync.rs: No such file or directory",
-  "timestamp": "2026-08-19T11:43:07.199Z",
-  "retry_count": 1
-}

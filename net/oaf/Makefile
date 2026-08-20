@@ -67,6 +67,19 @@ MAKE_OPTS:= \
 define Build/Prepare
 	$(call Build/Prepare/Default)
 	$(CP) $(PKG_BUILD_DIR)/oaf/src/* $(PKG_BUILD_DIR)/
+
+	# Kernel 6.18+ CONFIG_WERROR fix, carried forward from PR #6.
+	#
+	# This module predates CONFIG_WERROR-by-default; 6.18 promotes its
+	# unused-variable / missing-prototypes warnings to errors and the build fails
+	# on filogic. Package EXTRA_CFLAGS do NOT reach the in-kernel module compile —
+	# only ccflags-y in the module's own Kbuild lands after the kernel's -Werror=.
+	#
+	# Appended here rather than shipped as a patch deliberately: a patch against
+	# upstream's two-line Makefile would conflict on the next version bump, and
+	# the failure mode would be a broken build rather than a silent revert. This
+	# survives bumps. Harmless on older kernels.
+	echo 'ccflags-y += -Wno-error' >> $(PKG_BUILD_DIR)/Makefile
 endef
 
 define Build/Compile

@@ -64,8 +64,11 @@ define Package/ac-client/description
   TLS uses TLS 1.3 with an X25519+ML-KEM-768 post-quantum hybrid KEM.
 
   Ships pointed at wss://gw.aether-io.com/usp over the USP WebSocket MTP.
-  That endpoint terminates TLS at a public edge which does not request a
-  client certificate, so the daemon connects and onboards without one.
+  That endpoint terminates TLS at a public edge which does not currently
+  request a client certificate, so the daemon connects and onboards without
+  one. Do not treat that as permanent -- client authentication on this
+  endpoint is planned, and a device relying on its absence will stop
+  connecting when it lands.
 
   Note that the device is NOT issued a certificate by connecting: the
   controller's Boot! handler does not return one. The bootstrap certificates
@@ -129,8 +132,9 @@ echo ""
 echo "ac-client installed."
 echo ""
 echo "Default controller: wss://gw.aether-io.com/usp (USP over WebSocket)."
-echo "The endpoint does not request a client certificate, so the daemon"
-echo "connects and onboards without one."
+echo "The endpoint does not currently request a client certificate, so the"
+echo "daemon connects and onboards without one. Client authentication on"
+echo "this endpoint is planned -- do not rely on its absence."
 echo ""
 echo "  NOTE: connecting does NOT get this device a certificate. The"
 echo "  controller's Boot! handler does not return one. The bootstrap pair"

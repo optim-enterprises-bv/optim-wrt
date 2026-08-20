@@ -44,7 +44,12 @@ define Package/ac-client
   SUBMENU:=Management
   TITLE:=USP Agent daemon for OpenWrt APs (TR-369 / USP 1.3)
   URL:=https://github.com/optim-enterprises-bv/ac-client
-  DEPENDS:=+libc +ca-bundle
+  # RUST_ARCH_DEPENDS gates the package to the architectures rustc can target,
+  # so it is not offered (and cannot fail to build) elsewhere. ca-bundle is in
+  # DEFAULT_PACKAGES but is declared explicitly because the default ca_file
+  # points into it -- without it the agent fails at connect time, not at build
+  # time.
+  DEPENDS:=$(RUST_ARCH_DEPENDS) +libc +ca-bundle
 endef
 
 define Package/ac-client/description

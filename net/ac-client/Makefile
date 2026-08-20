@@ -64,8 +64,13 @@ define Package/ac-client/description
   TLS uses TLS 1.3 with an X25519+ML-KEM-768 post-quantum hybrid KEM.
 
   Ships pointed at wss://gw.aether-io.com/usp over the USP WebSocket MTP.
-  The controller provisions the device certificate over that same session on
-  the first NOTIFY(Boot!), so no pre-provisioned client certificate is needed.
+  That endpoint terminates TLS at a public edge which does not request a
+  client certificate, so the daemon connects and onboards without one.
+
+  Note that the device is NOT issued a certificate by connecting: the
+  controller's Boot! handler does not return one. The bootstrap certificates
+  below are installed because ac-client's TLS setup requires a readable
+  client cert/key pair to start at all, not because the endpoint uses them.
 endef
 
 # Config files and bootstrap certificates survive package upgrades.
@@ -124,8 +129,13 @@ echo ""
 echo "ac-client installed."
 echo ""
 echo "Default controller: wss://gw.aether-io.com/usp (USP over WebSocket)."
-echo "The controller provisions this device's certificates over that same"
-echo "WebSocket session on the first NOTIFY(Boot!)."
+echo "The endpoint does not request a client certificate, so the daemon"
+echo "connects and onboards without one."
+echo ""
+echo "  NOTE: connecting does NOT get this device a certificate. The"
+echo "  controller's Boot! handler does not return one. The bootstrap pair"
+echo "  in /etc/apclient/init/ exists only because ac-client's TLS setup"
+echo "  needs a readable client cert/key to start."
 echo ""
 echo "Server TLS is verified against /etc/ssl/certs/ca-certificates.crt"
 echo "(ca-bundle). ac-client seeds its trust store ONLY from ca_file and"

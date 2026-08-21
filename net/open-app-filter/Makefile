@@ -40,6 +40,7 @@ PKG_SOURCE_URL:=https://github.com/destan19/OpenAppFilter.git
 PKG_SOURCE_VERSION:=v$(PKG_VERSION)
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
+PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0
 PKG_LICENSE_FILES:=LICENSE
@@ -97,7 +98,7 @@ define Package/appfilter/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/open-app-filter/files/gen_class.sh $(1)/usr/bin/gen_class.sh
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/open-app-filter/files/appfilter.config $(1)/etc/config/appfilter
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/open-app-filter/files/user_info.config $(1)/etc/config/user_info
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/build/appfilter $(1)/usr/bin/appfilter
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/build/oafd $(1)/usr/bin/oafd
 
 	# ORDER MATTERS. This overwrites upstream's feature_en.cfg, which was copied
 	# by the wildcard above. Upstream ships 38 signatures; this ships ~1,349.

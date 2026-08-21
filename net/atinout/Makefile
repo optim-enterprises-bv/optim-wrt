@@ -1,35 +1,58 @@
-VERSION	= 0.9.1
+#
+# atinout — send AT commands to a modem, built from UPSTREAM source.
+#
+# This directory previously held a raw copy of the upstream project: its own
+# hand-written Makefile, atinout.c, README, Changelog, gplv3.txt and all. That is
+# not an OpenWrt package — there was no Package/ definition and no BuildPackage
+# call, so it could not have built through the feed at all. It also made this
+# repository a redistributor of GPL-3.0 source, with the licence and
+# change-notice obligations that follow, in exchange for nothing.
+#
+# Now it is a recipe. The builder fetches the program from its author; this feed
+# ships the OpenWrt packaging only.
+#
+include $(TOPDIR)/rules.mk
 
-PREFIX	= /usr
+PKG_NAME:=atinout
+PKG_VERSION:=0.9.1
+PKG_RELEASE:=1
 
-CC	?= gcc
-CFLAGS	?= -W -Wall -Wextra -Werror \
-	-DVERSION=\"$(VERSION)\" \
-	-g
-LDFLAGS ?=
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_URL:=https://github.com/beralt/atinout.git
+PKG_SOURCE_VERSION:=4013e8db4cd140c1df24bb90f929efeb9b61b238
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 
-all: atinout
+PKG_LICENSE:=GPL-3.0-or-later
+PKG_LICENSE_FILES:=gplv3.txt
+PKG_MAINTAINER:=Optim Enterprises BV
 
-atinout: atinout.c
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $^
+include $(INCLUDE_DIR)/package.mk
 
-ifeq "REMOVE_THIS_FOR_RELEASE" "REMOVE_THIS_FOR_RELEASE"
+define Package/atinout
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=Telephony
+  TITLE:=Send AT commands to a modem
+  URL:=https://github.com/beralt/atinout
+endef
 
-dist:
-	make -f make.dist dist_tar_file
+define Package/atinout/description
+  Reads AT commands from a file or stdin, sends them to a modem and writes the
+  responses out. Used by luci-app-atinout-mod.
+endef
 
-atinout.1 atinout.1.html: atinout.1.ronn
-	ronn $^
+# Upstream's Makefile builds a single binary and honours CC/CFLAGS/LDFLAGS.
+define Build/Compile
+	$(MAKE) -C $(PKG_BUILD_DIR) \
+		CC="$(TARGET_CC)" \
+		CFLAGS="$(TARGET_CFLAGS) -DVERSION=\\\"$(PKG_VERSION)\\\"" \
+		LDFLAGS="$(TARGET_LDFLAGS)" \
+		atinout
+endef
 
-clean:
-	rm -f atinout atinout.1 atinout.1.html atinout.spec
-else
-clean:
-	rm -f atinout
-endif
+define Package/atinout/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/atinout $(1)/usr/bin/atinout
+endef
 
-install: all
-	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp atinout $(DESTDIR)$(PREFIX)/bin
-	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
-	cp atinout.1 $(DESTDIR)$(PREFIX)/share/man/man1/atinout.1
+$(eval $(call BuildPackage,atinout))

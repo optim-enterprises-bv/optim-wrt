@@ -1,0 +1,4 @@
+test/test_match
+test/test_match_asan
+*.o
+*.ko

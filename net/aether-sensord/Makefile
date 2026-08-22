@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -46,7 +46,15 @@ define Package/aether-sensord
   # +libndpi is LGPL-3.0-or-later and links into this BSD-3-Clause binary
   # without contaminating it. It is the LIBRARY; the nDPId daemon (GPL-3,
   # cannot enforce) is deliberately not used.
-  DEPENDS:=+libc +nftables-json +aether-appdb +libndpi +kmod-nfnetlink-log
+  # kmod-nfnetlink-log: NFLOG cannot be bound without it and it is not in
+  #   DEFAULT_PACKAGES. Its absence gives "cannot bind NFLOG group N (Invalid
+  #   argument)" and both sensing and classification silently do nothing.
+  # kmod-aether-af: the name-hash half of enforcement. The daemon still
+  #   degrades gracefully when the module is not LOADED -- that is a different
+  #   failure from it not being INSTALLED, and only the second one is a
+  #   packaging question.
+  DEPENDS:=+libc +nftables-json +aether-appdb +libndpi +kmod-nfnetlink-log \
+           +kmod-aether-af
   # Supersedes the standalone sensor daemon, whose sources now live here.
   # PROVIDES lets an installed aether-fwlogs be replaced rather than sit
   # alongside this one feeding the same NFLOG group from a second process.

@@ -128,3 +128,77 @@ Read before quoting the headline number.
   header before trusting a number.
 - `tcpdump-mini` was installed on the board for packet counting and remains
   installed.
+
+---
+
+# ADR-003 hardware gate: RESULTS (2026-08-22, BPI-R4)
+
+Cross-compiled aarch64_cortex-a53 musl, gcc 14.4.0, installed via `apk add`.
+No sysupgrade, no `fw4 reload`, fw4's own ruleset never re-rendered.
+
+## Gate 1 — full signature database loads on-device: PASS
+
+```
+apps        : 1319      rules: 1348      merged_by_tag: 28
+refused_malformed: 0    refused_apps_full: 0    refused_rules_full: 0
+highest_class: 42       format: v2.0
+OK: every line in the database was accounted for.
+```
+
+Identical to the host, which also validates the cross-compile: musl/aarch64
+produces the same result as glibc/x86-64. This is the gate the reference
+implementation could not answer at all -- `/proc/sys/oaf/feature_init` is dead
+code and reports 0 forever.
+
+## Gate 2 — feed applied and verified against the kernel: PASS
+
+12 real Spamhaus DROP prefixes fed as a snapshot:
+
+```
+feed serial 1 applied and verified (+12 -0)
+stopping: 0 deltas, 1 snapshots applied, 0 resyncs,
+          1 batches applied, 0 failed, 0 verify mismatches
+```
+
+The kernel afterwards held **11** elements, not 12 -- `auto-merge` collapsed
+`2.57.232.0/23` + `2.57.234.0/23` into `2.57.232.0/22`. That is correct
+behaviour, and it is exactly why `apply_and_verify` checks a FLOOR rather than
+an exact count. An exact comparison would have failed here on a correct result.
+Entries carry `expires 6d23h59m59s` from the 7-day set timeout.
+
+## Gate 3 — a packet actually dies: PASS
+
+Run in an isolated `inet aether_test` table so fw4's live rules were never
+touched:
+
+```
+before: ip daddr @rep4 counter packets 0 bytes 0 drop
+        ping 192.0.2.1 -> leaves the box
+
+after adding 192.0.2.1 to the set:
+        ping: sendto: Operation not permitted
+        ip daddr @rep4 counter packets 1 bytes 84 drop
+```
+
+Not "config applied successfully" -- a counter incrementing and the kernel
+refusing to send. This is the claim ADR-017 says cannot be inferred from an
+exit code.
+
+## Still NOT proven
+
+- **Nothing references the sets.** `nft.c` renders set declarations, elements
+  and flush, but NO rule using them. Populated sets block nothing until a rule
+  exists. Found before the test rather than after, but it means gates 2 and 3
+  prove the mechanism separately and not the product.
+- Adding `ip saddr @aether_rep4 drop` to fw4's live input chain was NOT done --
+  this board is the household's gateway.
+- Offload interaction: unchanged and still unmeasured.
+- Burst behaviour and the D50/IPQ lane: unchanged, still open.
+
+## Board state left behind
+
+Sets `aether_rep4`/`aether_rep6` exist in `inet fw4` holding 11 real prefixes,
+INERT because no rule references them. One persistent file:
+`/usr/share/nftables.d/table-pre/inet/fw4/10-aether-sensord.nft` (389 bytes),
+which recreates the declarations on the next `fw4 reload`. `apk del
+aether-sensord aether-sigtool` plus removing that file reverses everything.

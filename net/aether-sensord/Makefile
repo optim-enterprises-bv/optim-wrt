@@ -10,6 +10,17 @@ PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
 PKG_RELEASE:=1
 
+# Source lives in its own repository, pinned rather than tracked: a moving
+# branch would change what a tagged firmware contains without changing the
+# feed. BUSL-1.1 -- source-available, production use granted for use with the
+# Aether platform; see LICENSE in that repository.
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-sensord.git
+PKG_SOURCE_VERSION:=6f6b5885b3962d91444fcd19ab9137262be34a01
+PKG_MIRROR_HASH:=skip
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
+PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
+
 # Source lives in this feed. See net/aether-fwlogs for the same rationale:
 # a package-local src/ tree is cheaper to review than another repo plus a
 # pinned commit, and it keeps the signature schema in the same change as the
@@ -17,7 +28,7 @@ PKG_RELEASE:=1
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
 PKG_MAINTAINER:=Optim Enterprises BV
-PKG_LICENSE:=BSD-3-Clause
+PKG_LICENSE:=BUSL-1.1
 
 PKG_BUILD_PARALLEL:=1
 
@@ -151,33 +162,29 @@ define Package/aether-sigtool/description
   Exits non-zero if any signature was refused for want of capacity.
 endef
 
-define Build/Prepare
-	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./src/* $(PKG_BUILD_DIR)/
-endef
-
+# Default Build/Prepare unpacks the tarball; sources arrive under src/.
 define Build/Compile
 	$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_CPPFLAGS) \
 		-std=gnu11 -Wall -Wextra \
 		-o $(PKG_BUILD_DIR)/aether-sigtool \
-		$(PKG_BUILD_DIR)/sigtool.c \
-		$(PKG_BUILD_DIR)/sigdb.c \
-		$(PKG_BUILD_DIR)/match.c \
+		$(PKG_BUILD_DIR)/src/sigtool.c \
+		$(PKG_BUILD_DIR)/src/sigdb.c \
+		$(PKG_BUILD_DIR)/src/match.c \
 		$(TARGET_LDFLAGS)
 	$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_CPPFLAGS) \
 		-std=gnu11 -Wall -Wextra \
 		-o $(PKG_BUILD_DIR)/aether-sensord \
-		$(PKG_BUILD_DIR)/sensord.c \
-		$(PKG_BUILD_DIR)/sigdb.c \
-		$(PKG_BUILD_DIR)/match.c \
-		$(PKG_BUILD_DIR)/policy.c \
-		$(PKG_BUILD_DIR)/nft.c \
-		$(PKG_BUILD_DIR)/feed.c \
-		$(PKG_BUILD_DIR)/apply.c \
-		$(PKG_BUILD_DIR)/afpush.c \
-		$(PKG_BUILD_DIR)/polcfg.c \
-		$(PKG_BUILD_DIR)/nflog_raw.c \
-		$(PKG_BUILD_DIR)/observe.c \
+		$(PKG_BUILD_DIR)/src/sensord.c \
+		$(PKG_BUILD_DIR)/src/sigdb.c \
+		$(PKG_BUILD_DIR)/src/match.c \
+		$(PKG_BUILD_DIR)/src/policy.c \
+		$(PKG_BUILD_DIR)/src/nft.c \
+		$(PKG_BUILD_DIR)/src/feed.c \
+		$(PKG_BUILD_DIR)/src/apply.c \
+		$(PKG_BUILD_DIR)/src/afpush.c \
+		$(PKG_BUILD_DIR)/src/polcfg.c \
+		$(PKG_BUILD_DIR)/src/nflog_raw.c \
+		$(PKG_BUILD_DIR)/src/observe.c \
 		$(TARGET_LDFLAGS)
 endef
 

@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ac-client
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 # Track optim-enterprises-bv/ac-client over HTTPS at a pinned commit. The
 # in-repo package Makefile fetches over an SSH remote
@@ -17,13 +17,13 @@ PKG_RELEASE:=5
 # reproducible. Feed builds use HTTPS and an immutable commit.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/ac-client.git
-PKG_SOURCE_VERSION:=3c0191af9d8a7db97f5337340443febaea6050e1
+PKG_SOURCE_VERSION:=c8e3ba233fda22a7a605919bb236c9eb8804d5ae
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 
 PKG_MAINTAINER:=Optim Enterprises BV
-PKG_LICENSE:=BSD-3-Clause
+PKG_LICENSE:=BUSL-1.1
 PKG_LICENSE_FILES:=LICENSE
 
 # rust/host builds the Rust toolchain; cmake/host is needed to cross-compile

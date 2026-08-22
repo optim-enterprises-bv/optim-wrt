@@ -1,3 +1,0 @@
-# SPDX-License-Identifier: GPL-2.0-only
-obj-m := aether_af.o
-aether_af-y := af_module.o af_match.o

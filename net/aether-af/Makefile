@@ -14,6 +14,18 @@ PKG_RELEASE:=1
 
 PKG_MAINTAINER:=Optim Enterprises BV
 PKG_LICENSE:=GPL-2.0-only
+PKG_LICENSE_FILES:=LICENSE
+
+# Source lives in its own repository so the module can be built, audited and
+# redistributed independently of this feed -- which GPL-2.0 requires us to make
+# possible for anyone we ship a binary to. Pinned, not tracked: a moving branch
+# would change what a tagged firmware contains without changing the feed.
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-af.git
+PKG_SOURCE_VERSION:=cb9b373d3135f1f508c19e159c51464ebb247af5
+PKG_MIRROR_HASH:=skip
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
+PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 
 PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
@@ -23,7 +35,7 @@ define KernelPackage/aether-af
   SUBMENU:=Network Support
   TITLE:=aether application filtering mechanism
   DEPENDS:=+kmod-nf-conntrack
-  FILES:=$(PKG_BUILD_DIR)/aether_af.ko
+  FILES:=$(PKG_BUILD_DIR)/src/aether_af.ko
   AUTOLOAD:=$(call AutoLoad,50,aether_af)
 endef
 
@@ -47,13 +59,10 @@ define KernelPackage/aether-af/description
   daemon sends them.
 endef
 
-define Build/Prepare
-	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./src/* $(PKG_BUILD_DIR)/
-endef
-
+# The repository keeps sources under src/, which is also where Kbuild lives, so
+# that is what M= points at. Default Build/Prepare unpacks the tarball.
 define Build/Compile
-	+$(KERNEL_MAKE) M="$(PKG_BUILD_DIR)" modules
+	+$(KERNEL_MAKE) M="$(PKG_BUILD_DIR)/src" modules
 endef
 
 $(eval $(call KernelPackage,aether-af))

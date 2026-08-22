@@ -128,7 +128,15 @@ bool pol_window_contains(const struct pol_window *w, struct pol_time t)
 {
 	if (!w)
 		return false;
+	/* Both fields are validated, not just one. An out-of-range minute
+	 * behaves differently in the two branches below -- a same-day window
+	 * fails safe, but a WRAPPING window tests `min_of_day >= start` first,
+	 * so any garbage above start would match. Same asymmetry as an address
+	 * screen that guards one family and not the other: refuse what cannot
+	 * be classified. */
 	if (t.wday < 0 || t.wday > 6)
+		return false;
+	if (t.min_of_day > 1439)
 		return false;
 
 	uint16_t start = w->start_min;
@@ -160,6 +168,20 @@ bool pol_window_contains(const struct pol_window *w, struct pol_time t)
 	}
 
 	return false;
+}
+
+int pol_quota_day(const struct pol_rule *r, struct pol_time now)
+{
+	if (!r || !r->has_window)
+		return now.wday;
+	/* Non-wrapping window: opens and closes on the same day. */
+	if (r->window.start_min < r->window.end_min)
+		return now.wday;
+	/* Wrapping window, and we are in its morning tail -- the session began
+	 * yesterday, so the counter to consult is yesterday's. */
+	if (now.min_of_day < r->window.end_min)
+		return (now.wday + 6) % 7;
+	return now.wday;
 }
 
 /* Does this rule address the app or category we classified? */
@@ -197,6 +219,7 @@ struct pol_verdict pol_evaluate(const struct pol_db *db,
 	 * makes the outcome deterministic for a given rule set.
 	 */
 	bool decided_by_app = false;
+	bool decided_by_category = false;
 
 	for (size_t i = 0; i < db->n_rules; i++) {
 		const struct pol_rule *r = &db->rules[i];
@@ -204,7 +227,14 @@ struct pol_verdict pol_evaluate(const struct pol_db *db,
 			continue;
 		if (!rule_targets(r, app_tag, category_tag))
 			continue;
-		if (decided_by_app && r->target == POL_TARGET_CATEGORY)
+		/* First match wins WITHIN a target class, which is what the
+		 * comment above always claimed. The loop previously had no such
+		 * guard for app rules, so a second app rule silently overrode
+		 * the first -- deterministic, but the opposite of documented. */
+		if (r->target == POL_TARGET_APP && decided_by_app)
+			continue;
+		if (r->target == POL_TARGET_CATEGORY &&
+		    (decided_by_app || decided_by_category))
 			continue;
 
 		enum pol_action action = r->action;
@@ -238,6 +268,8 @@ struct pol_verdict pol_evaluate(const struct pol_db *db,
 
 		if (r->target == POL_TARGET_APP)
 			decided_by_app = true;
+		else
+			decided_by_category = true;
 	}
 
 	return v;

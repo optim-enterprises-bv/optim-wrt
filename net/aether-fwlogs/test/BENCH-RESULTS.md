@@ -100,6 +100,13 @@ Read before quoting the headline number.
   with unmatched long-tail hostnames to a realistic miss rate, and randomise
   the order rather than cycling `i % 16`, which is perfectly
   branch-predictable over 20,000 flows.
+
+  **This caveat is about nDPI, not about our matcher.** `match_flow` in
+  `net/aether-sensord` scans every rule to find the most specific match, so a
+  hit and a miss cost it the same and no miss-rate correction applies to it.
+  The 214 us floor is entirely a property of nDPI's internal matching. Worth
+  saying explicitly, because a reader who knows our matcher is exhaustive
+  might otherwise conclude the caveat does not apply to anything.
 - **QUIC is not measured at all.** The harness is TLS-with-SNI only. QUIC on
   UDP/443 is a large and growing share of real traffic and carries no visible
   SNI -- it is why OAF ships `disable_quic`. Quote the figure as "3,850

@@ -147,6 +147,35 @@ bool pol_add_rule(struct pol_db *db, const struct sig_db *sigs,
 bool pol_window_contains(const struct pol_window *w, struct pol_time t);
 
 /*
+ * Which day's usage counter should a quota on this rule be read from?
+ *
+ * Windows and quotas disagree about what "a day" is, and the disagreement is
+ * silent. `pol_window_contains` deliberately attributes 02:00 Saturday to
+ * FRIDAY's window -- that is what keeps a Friday bedtime in force past
+ * midnight. A calendar-day usage counter, by contrast, resets at local
+ * midnight.
+ *
+ * For a rule with BOTH a wrapping window and a quota, that divergence is a
+ * bug. Measured, not assumed:
+ *
+ *   BLOCK_IN (a bedtime rule)  -- immune. The quota only ever tightens
+ *     ALLOW into BLOCK, never the reverse, so a midnight counter reset
+ *     cannot reopen a window that is blocking.
+ *   ALLOW_IN (an allowance rule) -- affected. Quota spent at Fri 23:00
+ *     blocks; at Sat 00:30 the counter has reset and the same window session
+ *     allows again. A fresh hour appears inside one continuous window.
+ *
+ * So the caller must attribute usage to the day the WINDOW OPENED, not to the
+ * calendar day. This returns that weekday; feed it to whatever holds the
+ * per-day counters and pass the result as `used_today_sec`.
+ *
+ * Kept as a caller obligation rather than solved inside pol_evaluate because
+ * this file owns no clock and no storage, and inventing either here would
+ * make every schedule case unreachable in a test.
+ */
+int pol_quota_day(const struct pol_rule *r, struct pol_time now);
+
+/*
  * Decide. `used_today_sec` is this subject's consumption for the app in
  * question; pass 0 when quotas are not in use.
  *

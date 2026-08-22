@@ -373,6 +373,92 @@ static void test_capacity_refused_and_counted(void)
 	pol_db_free(&db);
 }
 
+static void test_quota_day_follows_the_window_not_the_calendar(void)
+{
+	/* The divergence found in review. Verified empirically before fixing:
+	 * BLOCK_IN is immune because the quota only tightens, but ALLOW_IN with
+	 * a wrapping window handed out a fresh allowance at midnight inside one
+	 * continuous window session. pol_quota_day tells the caller which day's
+	 * counter to read so the two halves of a rule agree. */
+	struct pol_rule r;
+	memset(&r, 0, sizeof(r));
+	r.has_window = true;
+	r.window.start_min = MIN(21, 0);
+	r.window.end_min = MIN(7, 0);
+	r.window.days = POL_DAY(FRI);
+	r.window.sense = POL_WINDOW_ALLOW_IN;
+	r.daily_quota_sec = 3600;
+
+	/* Before midnight: the window opened today, so today's counter. */
+	CHECK(pol_quota_day(&r, at(FRI, 23, 0)) == FRI, "Fri 23:00 -> Friday");
+	/* After midnight, still inside: the session began YESTERDAY. */
+	CHECK(pol_quota_day(&r, at(SAT, 0, 30)) == FRI,
+	      "Sat 00:30 -> Friday, so the allowance does not reset mid-session");
+	CHECK(pol_quota_day(&r, at(SAT, 6, 59)) == FRI, "Sat 06:59 -> Friday");
+	/* Past the window: ordinary calendar day again. */
+	CHECK(pol_quota_day(&r, at(SAT, 7, 0)) == SAT, "Sat 07:00 -> Saturday");
+	CHECK(pol_quota_day(&r, at(SAT, 12, 0)) == SAT, "Sat midday -> Saturday");
+
+	/* A non-wrapping window never diverges. */
+	struct pol_rule day;
+	memset(&day, 0, sizeof(day));
+	day.has_window = true;
+	day.window.start_min = MIN(9, 0);
+	day.window.end_min = MIN(17, 0);
+	CHECK(pol_quota_day(&day, at(WED, 10, 0)) == WED, "same-day window");
+
+	/* No window at all: plain calendar day. */
+	struct pol_rule plain;
+	memset(&plain, 0, sizeof(plain));
+	CHECK(pol_quota_day(&plain, at(WED, 10, 0)) == WED, "no window");
+}
+
+static void test_first_app_rule_wins(void)
+{
+	/* The comment always claimed first-wins; the loop had no guard, so a
+	 * second app rule silently overrode the first. Both orders asserted so
+	 * a regression to last-wins cannot pass. */
+	struct pol_db db;
+	pol_db_init(&db);
+	size_t kid = pol_add_subject(&db, KID, "kid");
+
+	struct pol_rule a;
+	memset(&a, 0, sizeof(a));
+	a.subject_index = (uint16_t)kid;
+	a.target = POL_TARGET_APP;
+	snprintf(a.tag, sizeof(a.tag), "youtube");
+	a.action = POL_BLOCK;
+	pol_add_rule(&db, NULL, &a);
+
+	struct pol_rule b = a;
+	b.action = POL_ALLOW; /* same subject, same tag, added later */
+	pol_add_rule(&db, NULL, &b);
+
+	struct pol_verdict v =
+	    pol_evaluate(&db, KID, "youtube", NULL, at(WED, 15, 0), 0);
+	CHECK(v.action == POL_BLOCK, "the FIRST app rule decides");
+	CHECK(v.rule_index == 0, "and it is rule 0, not the later one");
+
+	pol_db_free(&db);
+}
+
+static void test_out_of_range_minute_is_refused(void)
+{
+	/* A wrapping window tests `min_of_day >= start` first, so garbage above
+	 * start would match. Both fields are validated now, not just wday. */
+	struct pol_window wrap = { MIN(21, 0), MIN(7, 0), POL_ALL_DAYS,
+		                   POL_WINDOW_BLOCK_IN };
+	struct pol_time bad = { WED, 9999 };
+	CHECK(!pol_window_contains(&wrap, bad),
+	      "out-of-range minute refused, not treated as inside");
+
+	struct pol_time bad_day = { 9, MIN(22, 0) };
+	CHECK(!pol_window_contains(&wrap, bad_day), "out-of-range weekday refused");
+
+	struct pol_time ok = { WED, 1439 };
+	CHECK(pol_window_contains(&wrap, ok), "23:59 is still valid");
+}
+
 int main(void)
 {
 	test_bedtime_blocks_at_night_not_during_the_day();
@@ -386,6 +472,9 @@ int main(void)
 	test_app_rule_beats_category_rule();
 	test_unknown_tag_is_refused_not_silently_dead();
 	test_capacity_refused_and_counted();
+	test_quota_day_follows_the_window_not_the_calendar();
+	test_first_app_rule_wins();
+	test_out_of_range_minute_is_refused();
 
 	printf("%d checks, %d failures\n", checks, failures);
 	return failures == 0 ? 0 : 1;

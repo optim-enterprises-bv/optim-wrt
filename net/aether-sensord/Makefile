@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -16,7 +16,7 @@ PKG_RELEASE:=1
 # Aether platform; see LICENSE in that repository.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-sensord.git
-PKG_SOURCE_VERSION:=6f6b5885b3962d91444fcd19ab9137262be34a01
+PKG_SOURCE_VERSION:=fe4fabfd8e9cf6f07c04188508ee95ce0a402534
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
@@ -43,7 +43,10 @@ define Package/aether-sensord
   # aether-appdb carries the signature database. Declared rather than assumed:
   # this daemon previously read a path that only another package happened to
   # install, so installing it alone loaded zero signatures and blocked nothing.
-  DEPENDS:=+libc +nftables-json +aether-appdb
+  # +libndpi is LGPL-3.0-or-later and links into this BSD-3-Clause binary
+  # without contaminating it. It is the LIBRARY; the nDPId daemon (GPL-3,
+  # cannot enforce) is deliberately not used.
+  DEPENDS:=+libc +nftables-json +aether-appdb +libndpi
   # Supersedes the standalone sensor daemon, whose sources now live here.
   # PROVIDES lets an installed aether-fwlogs be replaced rather than sit
   # alongside this one feeding the same NFLOG group from a second process.
@@ -88,9 +91,19 @@ define Package/aether-sensord/description
   NOT commit, so the module keeps enforcing the last ruleset that committed
   whole.
 
-  NOT IN THIS BUILD: capture and nDPI dissection. Classification is done in the
-  kernel by aether-af from the hashes this daemon pushes; this daemon does not
-  see traffic itself.
+  Links libndpi (LGPL-3.0-or-later) for protocol dissection: 474 protocols,
+  QUIC, JA3/JA4, TLS certificate fields and per-flow risk flags. This is the
+  LIBRARY; the nDPId daemon (GPL-3, libpcap, cannot enforce) is not used.
+
+  Dissection decides WHERE a block can be applied. aether-af refuses anything
+  that is not TCP and reads only TLS/HTTP, so a QUIC flow cannot be matched by
+  name hash in the kernel no matter what nDPI extracted -- those are enforced
+  by address in nftables instead. Replaying nDPI's own 349 test captures,
+  66% of classified flows (3275 of 4936) fall on the address side.
+
+  NOT REACHED AT RUNTIME YET: nothing feeds the dissector. The only packet
+  source is NFLOG on dropped packets, which is the wrong one -- classification
+  needs to see allowed traffic. A mirror rule or NFQUEUE is the next step.
 
   TWO KNOWN GAPS, stated because neither is visible from any counter:
 

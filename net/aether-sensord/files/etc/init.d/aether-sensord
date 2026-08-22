@@ -56,7 +56,7 @@ start_service() {
 
 	config_load aether-sensord
 	config_get_bool enabled main enabled 1
-	config_get db_path     main db_path     /etc/appfilter/feature_en.cfg
+	config_get db_path     main db_path     /usr/share/aether/appdb.cfg
 	config_get spool_dir   main spool_dir   /var/spool/aether-sensord/feed
 	config_get interval    main interval    30
 	config_get set_timeout main set_timeout 604800

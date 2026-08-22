@@ -5,9 +5,13 @@ config aether-sensord 'main'
 	# aether-fwlogs, which is off by default because it REPORTS addresses.
 	option enabled '1'
 
-	# Signature database. Loaded and reported so the load is confirmable on
-	# a running device; nothing classifies traffic in this build.
-	option db_path '/etc/appfilter/feature_en.cfg'
+	# Signature database, shipped by the aether-appdb package. Loaded and
+	# reported so the load is confirmable on a running device.
+	#
+	# /etc/appfilter/feature_en.cfg is still honoured via a compatibility
+	# symlink, because UCI config survives sysupgrade and older devices have
+	# that path written into this file.
+	option db_path '/usr/share/aether/appdb.cfg'
 
 	# Feed messages are delivered here by ac-client, which already holds the
 	# device's mTLS identity. This daemon opens no network socket.

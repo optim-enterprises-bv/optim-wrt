@@ -40,7 +40,10 @@ define Package/aether-sensord
   SUBMENU:=Firewall
   TITLE:=Device-side security service (reputation enforcement + sensing)
   URL:=https://github.com/optim-enterprises-bv/optim-wrt
-  DEPENDS:=+libc +nftables-json
+  # aether-appdb carries the signature database. Declared rather than assumed:
+  # this daemon previously read a path that only another package happened to
+  # install, so installing it alone loaded zero signatures and blocked nothing.
+  DEPENDS:=+libc +nftables-json +aether-appdb
   # Supersedes the standalone sensor daemon, whose sources now live here.
   # PROVIDES lets an installed aether-fwlogs be replaced rather than sit
   # alongside this one feeding the same NFLOG group from a second process.
@@ -79,10 +82,26 @@ define Package/aether-sensord/description
   an imperatively-created set. Elements carry a timeout, so reputation decays
   in the kernel as well as in the scorer.
 
-  NOT IN THIS BUILD: capture, nDPI dissection, application classification and
-  app policy enforcement. The signature database is loaded and reported so the
-  load is confirmable on-device, but nothing feeds it traffic. Application
-  filtering continues to be done by oaf.ko, which this daemon does not touch.
+  Also loads UCI application policy, resolves it against the signature
+  database from aether-appdb, and compiles it to host-pattern hashes pushed to
+  the aether-af kernel module over netlink. If any batch fails to send it does
+  NOT commit, so the module keeps enforcing the last ruleset that committed
+  whole.
+
+  NOT IN THIS BUILD: capture and nDPI dissection. Classification is done in the
+  kernel by aether-af from the hashes this daemon pushes; this daemon does not
+  see traffic itself.
+
+  TWO KNOWN GAPS, stated because neither is visible from any counter:
+
+  aether-af hooks NF_INET_FORWARD and parses TLS and HTTP only, so hardware NAT
+  offload bypasses it entirely and QUIC conceals the SNI it reads. open-app-filter
+  shipped uci-defaults forcing disable_hnat and disable_quic; nothing equivalent
+  ships here yet.
+
+  64% of the signature database matches only 'www.<domain>', an exact hostname
+  that is usually a marketing site rather than the endpoint an application uses.
+  See SIGNATURE-COVERAGE.md in the aether-sensord repository.
 endef
 
 define Package/aether-sensord/conffiles

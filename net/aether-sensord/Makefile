@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -16,7 +16,7 @@ PKG_RELEASE:=2
 # Aether platform; see LICENSE in that repository.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-sensord.git
-PKG_SOURCE_VERSION:=fe4fabfd8e9cf6f07c04188508ee95ce0a402534
+PKG_SOURCE_VERSION:=7f7b1aef8f6166fa1915e947a35f602e6607c7ef
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
@@ -215,9 +215,11 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/src/apply.c \
 		$(PKG_BUILD_DIR)/src/afpush.c \
 		$(PKG_BUILD_DIR)/src/polcfg.c \
+		$(PKG_BUILD_DIR)/src/dpi.c \
+		$(PKG_BUILD_DIR)/src/appblock.c \
 		$(PKG_BUILD_DIR)/src/nflog_raw.c \
 		$(PKG_BUILD_DIR)/src/observe.c \
-		$(TARGET_LDFLAGS)
+		$(TARGET_LDFLAGS) -lndpi -lm -lpthread
 endef
 
 define Package/aether-sigtool/install

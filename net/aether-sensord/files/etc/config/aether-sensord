@@ -95,3 +95,22 @@ config aether-sensord 'main'
 	# application asked for. The timeout is what bounds that damage, so a
 	# value of 0 is refused rather than meaning "forever".
 	option dpi_addr_timeout '3600'
+
+	# What to do about the flow-offload conflict.
+	#
+	# fw4 emits `flow offload @ft` as the FIRST statement of the forward
+	# chain, ahead of every include point it offers. Once a connection is
+	# established it is offloaded and later packets bypass netfilter
+	# entirely -- so the TLS ClientHello, typically the fourth packet, is
+	# never seen. Inspection then reports healthy and inspects nothing.
+	#
+	#   warn     (default) leave offloading alone. The daemon probes
+	#            nftables and logs OFFLOAD CONFLICT if a flowtable exists,
+	#            at start and whenever one appears later.
+	#   disable  turn flow_offloading and flow_offloading_hw off so
+	#            inspection works. THIS COSTS ROUTING THROUGHPUT, materially
+	#            so on IPQ and filogic hardware.
+	#
+	# There is no setting that gives both. Open App Filter shipped
+	# disable_hnat=1 for exactly this reason.
+	option offload_policy 'warn'

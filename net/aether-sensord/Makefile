@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -16,7 +16,7 @@ PKG_RELEASE:=4
 # Aether platform; see LICENSE in that repository.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-sensord.git
-PKG_SOURCE_VERSION:=10c8dab61590fc1040f224d23f8145ce4c3cd422
+PKG_SOURCE_VERSION:=a7fa2b03fd835c81d50fcd65f1c24b1683612ad2
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
@@ -111,6 +111,14 @@ define Package/aether-sensord/description
   128 bytes -- headers only, so packet contents never enter the daemon.
   Dissection needs the payload, because a TLS ClientHello or a QUIC Initial IS
   the payload. dpi_enabled is therefore its own option and defaults to off.
+
+  FLOW OFFLOADING AND INSPECTION ARE MUTUALLY EXCLUSIVE. fw4 emits
+  `flow offload @ft` as the first statement of the forward chain, ahead of every
+  include point it offers, so an established flow bypasses netfilter and the TLS
+  ClientHello is never seen. The daemon probes for a flowtable at start and each
+  interval and logs OFFLOAD CONFLICT when one exists; offload_policy chooses
+  between leaving it alone and turning offloading off, which works but costs
+  routing throughput. No setting gives both.
 
   TWO KNOWN GAPS, stated because neither is visible from any counter:
 
@@ -225,6 +233,7 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/src/dpi.c \
 		$(PKG_BUILD_DIR)/src/appblock.c \
 		$(PKG_BUILD_DIR)/src/neigh.c \
+		$(PKG_BUILD_DIR)/src/offload.c \
 		$(PKG_BUILD_DIR)/src/nflog_raw.c \
 		$(PKG_BUILD_DIR)/src/observe.c \
 		$(TARGET_LDFLAGS) -lndpi -lm -lpthread

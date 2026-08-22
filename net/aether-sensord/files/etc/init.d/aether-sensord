@@ -41,6 +41,49 @@ NFT
 		logger -t aether-sensord "fw4 reload failed; sense rule may be inactive"
 }
 
+# Flow offloading and packet inspection are mutually exclusive, and fw4 gives
+# us no way to have both.
+#
+# fw4 emits `meta l4proto { tcp, udp } flow offload @ft` as the FIRST statement
+# of the forward chain, before every include point it offers. Once a connection
+# is established it is offloaded and later packets are handled at the ingress
+# hook, never reaching netfilter. The TLS ClientHello is typically the fourth
+# packet of a TCP flow, so it is simply never seen.
+#
+# This is why Open App Filter shipped disable_hnat=1 as a default. It is not
+# tuning; it is the difference between inspection working and inspection being
+# decorative.
+#
+# The choice is the operator's because it costs real throughput on IPQ and
+# filogic hardware, so this never changes it silently.
+apply_offload_policy() {
+	local policy="$1"
+
+	case "$policy" in
+	disable)
+		local cur_sw cur_hw
+		cur_sw=$(uci -q get firewall.@defaults[0].flow_offloading)
+		cur_hw=$(uci -q get firewall.@defaults[0].flow_offloading_hw)
+		if [ "$cur_sw" = "0" ] && [ "$cur_hw" != "1" ]; then
+			return 0
+		fi
+		uci -q set firewall.@defaults[0].flow_offloading='0'
+		uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+		uci -q commit firewall
+		logger -t aether-sensord "flow offloading DISABLED so application \
+inspection can see traffic. This costs routing throughput. Set \
+offload_policy='warn' in /etc/config/aether-sensord to keep offloading and \
+accept that app filtering will be inert."
+		command -v fw4 >/dev/null 2>&1 && fw4 reload >/dev/null 2>&1
+		;;
+	warn|*)
+		# The daemon probes nftables directly and reports the conflict
+		# if one exists. Nothing to do here beyond not hiding it.
+		:
+		;;
+	esac
+}
+
 install_dpi_rule() {
 	local group="$1"
 
@@ -86,7 +129,7 @@ start_service() {
 	local enabled db_path spool_dir interval set_timeout
 	local sense_enabled sense_group sense_capacity sense_scan_ports sense_zone
 	local sense_spool sense_max_batches
-	local dpi_enabled dpi_group dpi_max_flows dpi_addr_timeout
+	local dpi_enabled dpi_group dpi_max_flows dpi_addr_timeout offload_policy
 
 	config_load aether-sensord
 	config_get_bool enabled main enabled 1
@@ -109,6 +152,7 @@ start_service() {
 	config_get dpi_group         main dpi_group         6
 	config_get dpi_max_flows     main dpi_max_flows     4096
 	config_get dpi_addr_timeout  main dpi_addr_timeout  3600
+	config_get offload_policy    main offload_policy    warn
 
 	[ "$enabled" -eq 0 ] && {
 		logger -t aether-sensord "disabled in /etc/config/aether-sensord"
@@ -133,6 +177,11 @@ start_service() {
 		# Off, or turned off since last start: take the rule down so a
 		# disabled sensor is not still being fed.
 		remove_sense_rule
+	fi
+
+	# Only relevant when something is actually meant to be inspecting.
+	if [ "$dpi_enabled" -eq 1 ]; then
+		apply_offload_policy "$offload_policy"
 	fi
 
 	if [ "$dpi_enabled" -eq 1 ]; then

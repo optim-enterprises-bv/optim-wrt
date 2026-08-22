@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -16,7 +16,7 @@ PKG_RELEASE:=3
 # Aether platform; see LICENSE in that repository.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-sensord.git
-PKG_SOURCE_VERSION:=7f7b1aef8f6166fa1915e947a35f602e6607c7ef
+PKG_SOURCE_VERSION:=10c8dab61590fc1040f224d23f8145ce4c3cd422
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
@@ -101,9 +101,16 @@ define Package/aether-sensord/description
   by address in nftables instead. Replaying nDPI's own 349 test captures,
   66% of classified flows (3275 of 4936) fall on the address side.
 
-  NOT REACHED AT RUNTIME YET: nothing feeds the dissector. The only packet
-  source is NFLOG on dropped packets, which is the wrong one -- classification
-  needs to see allowed traffic. A mirror rule or NFQUEUE is the next step.
+  Classification is fed by its own NFLOG group from a non-terminating mirror
+  rule on the forward chain, and flows are attributed to devices through
+  /proc/net/arp and an RTM_GETNEIGH netlink dump. Attribution refuses rather
+  than guesses: a stale or incomplete neighbour entry would blame whichever
+  device previously held that address.
+
+  CONSENTED SEPARATELY FROM SENSING, and for a stronger reason. Sensing takes
+  128 bytes -- headers only, so packet contents never enter the daemon.
+  Dissection needs the payload, because a TLS ClientHello or a QUIC Initial IS
+  the payload. dpi_enabled is therefore its own option and defaults to off.
 
   TWO KNOWN GAPS, stated because neither is visible from any counter:
 
@@ -217,6 +224,7 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/src/polcfg.c \
 		$(PKG_BUILD_DIR)/src/dpi.c \
 		$(PKG_BUILD_DIR)/src/appblock.c \
+		$(PKG_BUILD_DIR)/src/neigh.c \
 		$(PKG_BUILD_DIR)/src/nflog_raw.c \
 		$(PKG_BUILD_DIR)/src/observe.c \
 		$(TARGET_LDFLAGS) -lndpi -lm -lpthread

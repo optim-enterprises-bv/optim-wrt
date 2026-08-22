@@ -67,3 +67,31 @@ config aether-sensord 'main'
 
 	# Batch files retained if nothing drains them. Oldest removed first.
 	option sense_max_batches '32'
+
+# --- Application classification (nDPI) -------------------------------------
+#
+# SEPARATE CONSENT AGAIN, AND FOR A STRONGER REASON THAN SENSING.
+#
+# The sensing section above asks NFLOG for 128 bytes: headers only, so packet
+# CONTENTS never enter the daemon. Classification cannot work that way -- a TLS
+# ClientHello or a QUIC Initial IS payload, and identifying it means copying it
+# into userspace. That is a materially different promise to the subscriber, so
+# it is its own switch and defaults to off.
+	option dpi_enabled '0'
+
+	# NFLOG group for the classification mirror rule. MUST differ from
+	# sense_group: one carries dropped packets, the other carries a copy of
+	# allowed traffic, and mixing them would classify only what was blocked.
+	option dpi_group '6'
+
+	# Concurrent flows tracked. Bounds memory; a full table evicts the
+	# least recently seen and counts it.
+	option dpi_max_flows '4096'
+
+	# How long an address block lasts, in seconds.
+	#
+	# Address blocks are COARSE: blocking an address blocks every name
+	# behind it, which on shared CDN infrastructure reaches beyond the
+	# application asked for. The timeout is what bounds that damage, so a
+	# value of 0 is refused rather than meaning "forever".
+	option dpi_addr_timeout '3600'

@@ -30,7 +30,7 @@ define Package/aether-fwlogs
   SUBMENU:=Firewall
   TITLE:=Firewall-drop sensor for aether attacker reputation
   URL:=https://github.com/optim-enterprises-bv/optim-wrt
-  DEPENDS:=+libnetfilter-log +libnfnetlink +kmod-nfnetlink-log
+  DEPENDS:=+kmod-nfnetlink-log
 endef
 
 define Package/aether-fwlogs/description
@@ -76,7 +76,8 @@ define Build/Compile
 		-std=gnu11 -Wall -Wextra \
 		-o $(PKG_BUILD_DIR)/aether-fwlogs \
 		$(PKG_BUILD_DIR)/main.c $(PKG_BUILD_DIR)/observe.c \
-		$(TARGET_LDFLAGS) -lnetfilter_log -lnfnetlink
+		$(PKG_BUILD_DIR)/nflog_raw.c \
+		$(TARGET_LDFLAGS)
 endef
 
 define Package/aether-fwlogs/install

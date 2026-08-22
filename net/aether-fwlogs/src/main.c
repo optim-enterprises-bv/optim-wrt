@@ -17,11 +17,7 @@
 
 #include "observe.h"
 
-/* sys/time.h and sys/socket.h come first deliberately:
- * libnetfilter_log.h declares nflog_get_timestamp(..., struct timeval *) but
- * does not include <sys/time.h> itself, so including it first produces an
- * incomplete-type warning that -Werror turns into a build failure. recv() is
- * likewise declared in <sys/socket.h>, which nothing else here pulls in
+/* recv() is declared in <sys/socket.h>, which nothing else here pulls in
  * reliably across glibc and musl. */
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -29,7 +25,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <getopt.h>
-#include <libnetfilter_log/libnetfilter_log.h>
+#include "nflog_raw.h"
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
@@ -71,25 +67,18 @@ static void on_signal(int sig)
 		running = 0;
 }
 
-static int on_packet(struct nflog_g_handle *gh, struct nfgenmsg *nfmsg,
-                     struct nflog_data *nfa, void *data)
+static void on_packet(const uint8_t *payload, uint32_t plen, void *user)
 {
-	(void)gh;
-	(void)nfmsg;
-	(void)data;
-
-	char *payload = NULL;
-	int len = nflog_get_payload(nfa, &payload);
-	if (len <= 0 || !payload)
-		return 0;
-
 	struct obs_addr src;
 	uint16_t dport = 0;
-	if (obs_decode((const unsigned char *)payload, len, &src, &dport) != 0)
-		return 0;
+
+	(void)user;
+	if (!payload || plen == 0)
+		return;
+	if (obs_decode(payload, (int)plen, &src, &dport) != 0)
+		return;
 
 	obs_record(&table, &src, dport, (int64_t)time(NULL));
-	return 0;
 }
 
 /* Keep at most `max_batches` spool files, deleting oldest first. */
@@ -225,44 +214,25 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	struct nflog_handle *h = nflog_open();
-	if (!h) {
-		syslog(LOG_ERR, "nflog_open failed: %s", strerror(errno));
-		return 1;
-	}
-	/* Bind both families; a v6-only or v4-only deployment simply sees no
-	 * traffic on the unused one. */
-	nflog_unbind_pf(h, AF_INET);
-	if (nflog_bind_pf(h, AF_INET) < 0)
-		syslog(LOG_WARNING, "nflog_bind_pf(AF_INET) failed");
-	if (nflog_bind_pf(h, AF_INET6) < 0)
-		syslog(LOG_WARNING, "nflog_bind_pf(AF_INET6) failed");
-
-	struct nflog_g_handle *gh = nflog_bind_group(h, (uint16_t)cfg.group);
-	if (!gh) {
-		syslog(LOG_ERR, "cannot bind NFLOG group %u -- is another daemon "
-		                "already bound to it?", cfg.group);
-		nflog_close(h);
+	struct nfr_conn nfl;
+	/* 96 bytes is enough for the L3/L4 headers and no more. Asking for only
+	 * that is what keeps packet CONTENTS out of this process entirely -- we
+	 * read addresses and ports, never payload. */
+	if (!nfr_open(&nfl, (uint16_t)cfg.group, 96)) {
+		syslog(LOG_ERR,
+		       "cannot bind NFLOG group %u: %s -- is another daemon already "
+		       "bound to it, or is kmod-nfnetlink-log missing?",
+		       cfg.group, strerror(errno));
 		return 1;
 	}
 
-	/* We need only the L3/L4 headers. Copying 96 bytes instead of the whole
-	 * packet keeps kernel-to-userspace copying small on a busy WAN, and
-	 * means packet *contents* are never read -- only addresses and ports. */
-	if (nflog_set_mode(gh, NFULNL_COPY_PACKET, 96) < 0)
-		syslog(LOG_WARNING, "nflog_set_mode failed");
-	nflog_set_nlbufsiz(gh, 8192);
-	nflog_set_timeout(gh, 100);
-	nflog_callback_register(gh, &on_packet, NULL);
-
-	struct sigaction sa = { 0 };
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = on_signal;
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGUSR1, &sa, NULL);
 
-	int fd = nflog_fd(h);
-	char buf[8192];
 	time_t last_flush = time(NULL);
 
 	syslog(LOG_INFO,
@@ -270,16 +240,10 @@ int main(int argc, char **argv)
 	       cfg.group, cfg.capacity, cfg.interval, cfg.scan_ports, cfg.spool_dir);
 
 	while (running) {
-		ssize_t rv = recv(fd, buf, sizeof(buf), 0);
-		if (rv > 0) {
-			nflog_handle_packet(h, buf, (int)rv);
-		} else if (rv < 0 && errno != EINTR && errno != EAGAIN &&
-		           errno != EWOULDBLOCK && errno != ENOBUFS) {
-			syslog(LOG_ERR, "recv failed: %s", strerror(errno));
+		long got = nfr_dispatch(&nfl, on_packet, NULL);
+		if (got < 0) {
+			syslog(LOG_ERR, "NFLOG receive failed: %s", strerror(errno));
 			break;
-		} else if (rv < 0 && errno == ENOBUFS) {
-			/* Kernel queue overran. Visible rather than silent. */
-			syslog(LOG_WARNING, "NFLOG queue overrun -- records lost");
 		}
 
 		time_t now = time(NULL);
@@ -287,14 +251,25 @@ int main(int argc, char **argv)
 			flush_now = 0;
 			flush_batch(&cfg);
 			last_flush = now;
+			if (nfl.overruns) {
+				syslog(LOG_WARNING,
+				       "%llu NFLOG queue overruns -- records were lost",
+				       (unsigned long long)nfl.overruns);
+				nfl.overruns = 0;
+			}
+			if (nfl.malformed) {
+				syslog(LOG_WARNING,
+				       "%llu malformed NFLOG messages",
+				       (unsigned long long)nfl.malformed);
+				nfl.malformed = 0;
+			}
 		}
 	}
 
 	syslog(LOG_INFO, "shutting down, flushing final batch");
 	flush_batch(&cfg);
 
-	nflog_unbind_group(gh);
-	nflog_close(h);
+	nfr_close(&nfl);
 	obs_table_free(&table);
 	closelog();
 	return 0;

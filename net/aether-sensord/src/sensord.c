@@ -48,6 +48,7 @@
 #include "feed.h"
 #include "match.h"
 #include "nft.h"
+#include "polcfg.h"
 #include "policy.h"
 #include "sigdb.h"
 
@@ -112,6 +113,8 @@ struct config {
 	unsigned sense_group;
 	size_t sense_capacity;
 	uint32_t sense_scan_ports;
+	/* UCI policy file compiled into kernel rules when -k is given. */
+	const char *policy_path;
 	const char *sense_spool;
 	unsigned sense_max_batches;
 };
@@ -423,13 +426,20 @@ static void sense_flush(const struct config *cfg, struct sense_ctx *sc)
 	obs_table_reset(&sc->tbl);
 }
 
+/* polcfg reports through a callback so it stays free of syslog. */
+static void policy_emit(void *user, const char *line)
+{
+	(void)user;
+	syslog(LOG_INFO, "%s", line);
+}
+
 static void usage(const char *a0)
 {
 	fprintf(stderr,
 	        "usage: %s [-d db] [-s spool] [-n nft-include] [-i interval]\n"
 	        "          [-T set-timeout-sec] [-N nft-path] [-k] [-f] [-1]\n"
 	        "          [-S] [-g nflog-group] [-c capacity] [-p scan-ports]\n"
-	        "          [-D sense-spool] [-b sense-max-batches]\n"
+	        "          [-D sense-spool] [-b sense-max-batches] [-P policy]\n"
 	        "  -k  push compiled app rules to the aether-af kernel module\n"
 	        "  -S  enable firewall-drop sensing (OFF by default: reports\n"
 	        "      attacker addresses, which is separately consented)\n",
@@ -452,12 +462,13 @@ int main(int argc, char **argv)
 		.sense_group = 5,
 		.sense_capacity = 4096,
 		.sense_scan_ports = 8,
+		.policy_path = "/etc/config/aether-policy",
 		.sense_spool = "/var/spool/aether-sensord/sense",
 		.sense_max_batches = 32,
 	};
 
 	int opt;
-	while ((opt = getopt(argc, argv, "d:s:n:i:T:N:g:c:p:D:b:f1kSh")) != -1) {
+	while ((opt = getopt(argc, argv, "d:s:n:i:T:N:g:c:p:D:b:P:f1kSh")) != -1) {
 		switch (opt) {
 		case 'd': cfg.db_path = optarg; break;
 		case 's': cfg.spool_dir = optarg; break;
@@ -470,6 +481,7 @@ int main(int argc, char **argv)
 		case 'g': cfg.sense_group = (unsigned)strtoul(optarg, NULL, 10); break;
 		case 'c': cfg.sense_capacity = (size_t)strtoul(optarg, NULL, 10); break;
 		case 'p': cfg.sense_scan_ports = (uint32_t)strtoul(optarg, NULL, 10); break;
+		case 'P': cfg.policy_path = optarg; break;
 		case 'D': cfg.sense_spool = optarg; break;
 		case 'b': cfg.sense_max_batches = (unsigned)strtoul(optarg, NULL, 10); break;
 		case 'f': cfg.foreground = 1; break;
@@ -520,32 +532,74 @@ int main(int argc, char **argv)
 	 * BSD userspace, and what crosses is a list of hashes. The module
 	 * cannot reconstruct a signature from one.
 	 */
+	/*
+	 * Load the policy BEFORE deciding whether the module is reachable.
+	 *
+	 * A malformed policy file is the operator's problem whether or not
+	 * aether-af happens to be loaded, and burying the report inside the
+	 * module branch would hide it on exactly the devices where nothing is
+	 * being enforced anyway.
+	 */
+	struct pol_db pol;
+	struct polcfg_stats pst;
+	long np;
+
+	pol_db_init(&pol);
+	np = polcfg_load_file(&pol, &sigs, cfg.policy_path, &pst);
+	if (np < 0) {
+		/* A device with no parental policy configured is an ordinary
+		 * device. Not an error, and not silence either. */
+		syslog(LOG_INFO, "policy: %s not readable; no app rules",
+		       cfg.policy_path);
+	} else {
+		polcfg_report(&pst, policy_emit, NULL);
+	}
+
 	if (cfg.push_af) {
+		static uint64_t hashes[AFPUSH_MAX_MSG];
 		struct afpush_conn afc;
+		size_t collisions = 0;
+		long nh;
+
+		/*
+		 * Compile before checking for the module.
+		 *
+		 * The compile is where policy meets the signature database, and
+		 * its result -- how many patterns a rule set actually resolves
+		 * to -- is worth reporting even with nothing to push it to. A
+		 * policy that names two applications and compiles to zero
+		 * hashes is a coverage gap, and it should be visible on a
+		 * device where the module was never loaded rather than only on
+		 * one where it was.
+		 */
+		nh = afpush_compile(&pol, &sigs, hashes,
+		                    sizeof(hashes) / sizeof(hashes[0]),
+		                    &collisions);
+		if (nh < 0)
+			syslog(LOG_ERR, "rule compilation failed");
+		else
+			syslog(LOG_INFO,
+			       "aether-af: %ld host patterns compiled from %zu "
+			       "policy rules (%zu duplicates collapsed)",
+			       nh, pol.n_rules, collisions);
+
+		if (nh == 0 && pol.n_rules > 0)
+			syslog(LOG_WARNING,
+			       "aether-af: %zu policy rules compiled to NO host "
+			       "patterns -- nothing will be blocked. Check that "
+			       "the rules are BLOCK and name apps the signature "
+			       "database defines.",
+			       pol.n_rules);
 
 		if (!afpush_open(&afc)) {
 			syslog(LOG_WARNING,
 			       "aether-af module not reachable on netlink unit %d "
-			       "-- app rules NOT pushed. Reputation enforcement is "
-			       "unaffected.",
-			       AFPUSH_NETLINK_UNIT);
+			       "-- %ld app rules NOT pushed. Reputation "
+			       "enforcement is unaffected.",
+			       AFPUSH_NETLINK_UNIT, nh < 0 ? 0 : nh);
 		} else {
-			static uint64_t hashes[AFPUSH_MAX_MSG];
-			struct pol_db pol;
-			size_t collisions = 0;
-			long nh;
 
-			/* No policy source is wired yet, so this compiles an
-			 * empty set and pushes an empty commit. That is
-			 * deliberate and honest: it proves the transport end to
-			 * end without pretending rules exist. */
-			pol_db_init(&pol);
-			nh = afpush_compile(&pol, &sigs, hashes,
-			                    sizeof(hashes) / sizeof(hashes[0]),
-			                    &collisions);
-			if (nh < 0) {
-				syslog(LOG_ERR, "rule compilation failed");
-			} else {
+			if (nh >= 0) {
 				uint8_t msg[AFPUSH_MAX_MSG];
 				size_t n, written = 0;
 
@@ -558,38 +612,94 @@ int main(int argc, char **argv)
 				if (n)
 					afpush_send(&afc, msg, n);
 
-				if (nh > 0) {
-					n = afpush_build_rules(msg, sizeof(msg),
-					                       hashes, NULL, NULL,
-					                       (size_t)nh, &written);
-					if (n)
-						afpush_send(&afc, msg, n);
-					/* Report what ACTUALLY went, not what was
-					 * asked for -- a short batch committed as
-					 * if whole enforces less than the
-					 * controller believes. */
-					if (written < (size_t)nh)
+				/*
+				 * Send in as many messages as it takes.
+				 *
+				 * The module accumulates every RULE_ADD into a
+				 * staging set and only swaps it in on COMMIT,
+				 * so a rule set larger than one message is a
+				 * sender-side loop and nothing more.
+				 *
+				 * That same property is what makes aborting
+				 * safe: if any batch fails we return without
+				 * committing, and the module keeps enforcing
+				 * the ruleset it already had. Committing what
+				 * we managed to send would silently enforce
+				 * less than the controller believes -- the
+				 * failure this loop exists to remove.
+				 */
+				bool complete = true;
+				unsigned batches = 0;
+
+				while (written < (size_t)nh) {
+					size_t chunk = 0;
+
+					n = afpush_build_rules(
+					        msg, sizeof(msg), hashes + written,
+					        NULL, NULL, (size_t)nh - written,
+					        &chunk);
+					if (n == 0 || chunk == 0) {
+						/* A single rule that will not
+						 * fit an empty message means
+						 * the two sides disagree about
+						 * the wire format. Looping
+						 * would spin forever. */
 						syslog(LOG_ERR,
-						       "only %zu of %ld app rules fit "
-						       "one batch; batching not yet "
-						       "implemented, rule set is SHORT",
-						       written, nh);
+						       "aether-af: no rule fits an "
+						       "empty message at offset %zu; "
+						       "wire format mismatch, "
+						       "NOT committing",
+						       written);
+						complete = false;
+						break;
+					}
+					if (!afpush_send(&afc, msg, n)) {
+						syslog(LOG_ERR,
+						       "aether-af: batch %u failed "
+						       "after %zu of %ld rules (%s); "
+						       "NOT committing, module keeps "
+						       "its previous ruleset",
+						       batches, written, nh,
+						       strerror(errno));
+						complete = false;
+						break;
+					}
+					written += chunk;
+					batches++;
 				}
 
-				n = afpush_build_simple(msg, sizeof(msg),
-				                        AFPUSH_RULES_COMMIT);
-				if (n)
-					afpush_send(&afc, msg, n);
-
-				syslog(LOG_INFO,
-				       "aether-af: pushed %zu of %ld app rule hashes "
-				       "(%zu duplicate patterns collapsed)",
-				       written, nh, collisions);
+				if (!complete) {
+					/* Leave staging behind deliberately.
+					 * The next successful BEGIN frees it,
+					 * and until then the live ruleset is
+					 * the last one that committed whole. */
+					syslog(LOG_ERR,
+					       "aether-af: app rule push ABANDONED; "
+					       "enforcement is whatever committed "
+					       "last, not what was just compiled");
+				} else {
+					n = afpush_build_simple(
+					        msg, sizeof(msg),
+					        AFPUSH_RULES_COMMIT);
+					if (n && afpush_send(&afc, msg, n))
+						syslog(LOG_INFO,
+						       "aether-af: pushed %zu of %ld "
+						       "app rule hashes in %u "
+						       "batch(es) (%zu duplicate "
+						       "patterns collapsed)",
+						       written, nh, batches,
+						       collisions);
+					else
+						syslog(LOG_ERR,
+						       "aether-af: %zu rules sent but "
+						       "COMMIT failed; none are live",
+						       written);
+				}
 			}
-			pol_db_free(&pol);
 			afpush_close(&afc);
 		}
 	}
+	pol_db_free(&pol);
 
 	struct nft_target target = { "inet", "fw4", "aether_rep4", "aether_rep6" };
 

@@ -174,6 +174,96 @@ static void test_compile_bounded(void)
 	sig_db_free(&sigs);
 }
 
+/*
+ * The batching loop in sensord.c, exercised here rather than in main().
+ *
+ * The property that matters is coverage: every hash must cross exactly once,
+ * in order, with no gap and no repeat. A gap enforces less than the controller
+ * believes and looks identical to a clean push.
+ */
+static void test_batching_covers_every_rule(void)
+{
+	enum { N = 5000 };
+	static uint64_t in[N];
+	static uint8_t seen[N];
+	uint8_t msg[AFPUSH_MAX_MSG];
+	size_t written = 0, i;
+	unsigned batches = 0;
+	int ordered = 1;
+
+	for (i = 0; i < N; i++)
+		in[i] = 0x1000000000000000ULL + i;
+	memset(seen, 0, sizeof(seen));
+
+	while (written < N) {
+		size_t chunk = 0;
+		size_t n = afpush_build_rules(msg, sizeof(msg), in + written,
+		                              NULL, NULL, N - written, &chunk);
+		const uint8_t *body = msg + 8; /* past struct afpush_hdr */
+		uint16_t hdr_count;
+		uint32_t hdr_len;
+		size_t k;
+
+		CHECK(n > 0 && chunk > 0, "each batch makes progress");
+		if (n == 0 || chunk == 0)
+			break; /* would spin; the daemon breaks here too */
+		CHECK(n <= sizeof(msg), "batch never exceeds the buffer");
+
+		/* Read the offsets back out of the header rather than trusting
+		 * the constants below, so a wire-format change fails this test
+		 * instead of silently reading the wrong bytes. */
+		memcpy(&hdr_count, msg + 2, sizeof(hdr_count));
+		memcpy(&hdr_len, msg + 4, sizeof(hdr_len));
+		CHECK(hdr_count == chunk, "header count matches what was written");
+		CHECK(hdr_len == chunk * 16, "header length matches the body");
+		CHECK(n == 8 + hdr_len, "total is header plus body, no padding");
+
+		for (k = 0; k < chunk; k++) {
+			uint64_t h;
+
+			memcpy(&h, body + k * 16, sizeof(h));
+			if (h != in[written + k])
+				ordered = 0;
+			if (h >= 0x1000000000000000ULL &&
+			    h - 0x1000000000000000ULL < N)
+				seen[h - 0x1000000000000000ULL]++;
+		}
+		written += chunk;
+		batches++;
+	}
+
+	CHECK(written == N, "every rule was sent");
+	CHECK(batches > 1, "the fixture actually needed more than one batch");
+	CHECK(ordered == 1, "rules arrive in order across batch boundaries");
+
+	{
+		size_t missing = 0, dup = 0;
+
+		for (i = 0; i < N; i++) {
+			if (seen[i] == 0)
+				missing++;
+			else if (seen[i] > 1)
+				dup++;
+		}
+		CHECK(missing == 0, "no rule was skipped at a batch boundary");
+		CHECK(dup == 0, "no rule was sent twice at a batch boundary");
+	}
+}
+
+/* A capacity that cannot hold even one rule must report zero, not loop. */
+static void test_batching_refuses_to_spin(void)
+{
+	uint8_t msg[AFPUSH_MAX_MSG];
+	uint64_t one = 0xabcdef;
+	size_t chunk = 12345;
+	size_t n;
+
+	/* Header fits, one rule does not. */
+	n = afpush_build_rules(msg, 8 + 4, &one, NULL, NULL, 1, &chunk);
+	CHECK(n == 0, "a buffer too small for one rule builds nothing");
+	CHECK(chunk == 0, "and reports zero written, so the caller cannot spin");
+}
+
 int main(void)
 {
 	test_hash_vector();
@@ -182,6 +272,8 @@ int main(void)
 	test_short_buffer_reports_partial();
 	test_compile_only_block_rules();
 	test_compile_bounded();
+	test_batching_covers_every_rule();
+	test_batching_refuses_to_spin();
 	printf("%d checks, %d failures\n", checks, failures);
 	return failures == 0 ? 0 : 1;
 }

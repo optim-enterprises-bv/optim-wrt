@@ -175,6 +175,7 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/feed.c \
 		$(PKG_BUILD_DIR)/apply.c \
 		$(PKG_BUILD_DIR)/afpush.c \
+		$(PKG_BUILD_DIR)/polcfg.c \
 		$(PKG_BUILD_DIR)/nflog_raw.c \
 		$(PKG_BUILD_DIR)/observe.c \
 		$(TARGET_LDFLAGS)

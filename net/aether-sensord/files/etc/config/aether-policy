@@ -1,0 +1,35 @@
+# Application policy for aether-sensord.
+#
+# Compiled into host-pattern hashes and pushed to the aether-af kernel module.
+# Nothing here takes effect unless aether-sensord runs with app rule pushing
+# enabled and the module is loaded; the daemon logs both facts on start.
+#
+# EVERY LINE THAT CANNOT BE USED IS COUNTED AND LOGGED. Check the log after
+# editing: "policy: N subjects, M rules accepted" followed by "policy REFUSED:"
+# with a per-category breakdown. A rule that names an unknown app or an
+# undeclared device is refused rather than silently ignored.
+
+# Devices are declared before they can be named by a rule. A rule naming a MAC
+# with no subject section is refused (unknown_subject), not auto-created --
+# a typo should not become a rule that enforces against nothing.
+#config subject
+#	option mac 'aa:bb:cc:dd:ee:ff'
+#	option label 'kid-tablet'
+
+#config rule
+#	option subject 'aa:bb:cc:dd:ee:ff'
+#	option tag 'youtube'
+#	option action 'block'
+#	# Optional daily window. Omit for always-on.
+#	#   days:  mon-fri | sat,sun | all | 0-6 (0 = Sunday)
+#	#   start/stop: HH:MM or minutes from midnight; may wrap past midnight
+#	#   sense: block_in (default, a bedtime rule) or allow_in (homework hour)
+#	option days 'mon-fri'
+#	option start '21:30'
+#	option stop '07:00'
+#	# Optional daily budget in seconds, 0 or absent = unlimited.
+#	#option quota '3600'
+
+# KNOWN LIMITATION: rules are per-device. The policy engine has no all-devices
+# subject, so a rule with no `subject` is refused and counted as no_subject
+# rather than quietly applied to one device or expanded across all of them.

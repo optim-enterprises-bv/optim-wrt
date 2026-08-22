@@ -212,8 +212,16 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (cfg.scan_ports > OBS_MAX_PORTS) {
+		syslog(LOG_ERR,
+		       "scan_ports=%u exceeds the port store (%d); a threshold above "
+		       "it can never be reached and scan detection would be silently "
+		       "disabled. Refusing to start.",
+		       cfg.scan_ports, OBS_MAX_PORTS);
+		return 1;
+	}
 	if (!obs_table_init(&table, cfg.capacity, cfg.scan_ports)) {
-		syslog(LOG_ERR, "cannot allocate observation table");
+		syslog(LOG_ERR, "cannot initialise observation table");
 		return 1;
 	}
 

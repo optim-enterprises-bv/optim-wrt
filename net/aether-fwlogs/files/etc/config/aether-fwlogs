@@ -17,6 +17,11 @@ config aether-fwlogs 'main'
 
 	# Distinct destination ports at or above which a source is reported as
 	# a port scan rather than a blocked connection.
+	#
+	# MUST NOT exceed OBS_MAX_PORTS (32). The daemon tracks distinct ports
+	# in a fixed store; a threshold above it can never be reached, so scan
+	# detection would be silently disabled. aether-fwlogs refuses to start
+	# rather than run in that state.
 	option scan_ports '8'
 
 	option spool_dir '/var/spool/aether-fwlogs'

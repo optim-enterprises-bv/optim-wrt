@@ -136,6 +136,11 @@ bool obs_table_init(struct obs_table *t, size_t capacity, uint32_t scan_port_thr
 {
 	if (!t || capacity == 0)
 		return false;
+	/* An unreachable threshold would disable scan detection while looking
+	 * configured. Refuse it here so the coupling between this bound and the
+	 * UCI value is enforced rather than assumed. */
+	if (scan_port_threshold > OBS_MAX_PORTS)
+		return false;
 	memset(t, 0, sizeof(*t));
 	t->entries = calloc(capacity, sizeof(struct obs_entry));
 	if (!t->entries)
@@ -205,11 +210,15 @@ static void note_port(struct obs_entry *e, uint16_t port)
 		if (e->ports[i] == port)
 			return; /* already recorded */
 	}
-	/* Distinct-port count keeps rising past the stored cap so scan detection
-	 * is not blunted by the memory bound. */
-	e->ports_seen++;
-	if (e->n_ports < OBS_MAX_PORTS)
+	if (e->n_ports < OBS_MAX_PORTS) {
 		e->ports[e->n_ports++] = port;
+		e->ports_seen++;
+		return;
+	}
+	/* Store is full. We can no longer distinguish a new port from a repeat
+	 * of one we could not keep, so stop counting and say so. Reporting a
+	 * number we cannot stand behind is worse than reporting a floor. */
+	e->ports_truncated = true;
 }
 
 bool obs_record(struct obs_table *t, const struct obs_addr *src, uint16_t dst_port,
@@ -264,9 +273,11 @@ long obs_write_ndjson(const struct obs_table *t, FILE *out)
 
 		int rc = fprintf(out,
 		                 "{\"src\":\"%s\",\"kind\":\"%s\",\"hits\":%u,"
-		                 "\"ports_seen\":%u,\"first_seen\":%lld,\"last_seen\":%lld}\n",
+		                 "\"ports_seen\":%u,\"ports_truncated\":%s,"
+		                 "\"first_seen\":%lld,\"last_seen\":%lld}\n",
 		                 addr, obs_kind_str(obs_classify(t, e)), e->hits,
-		                 e->ports_seen, (long long)e->first_seen,
+		                 e->ports_seen, e->ports_truncated ? "true" : "false",
+		                 (long long)e->first_seen,
 		                 (long long)e->last_seen);
 		if (rc < 0)
 			return -1;

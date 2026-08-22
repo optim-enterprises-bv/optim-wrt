@@ -174,8 +174,14 @@ static void test_distinct_port_count_survives_the_storage_cap(void)
 			e = &t.entries[i];
 
 	CHECK(e && e->n_ports == OBS_MAX_PORTS, "stored ports are capped");
-	CHECK(e && e->ports_seen == 1000, "distinct count is uncapped");
-	CHECK(e && obs_classify(&t, e) == OBS_PORT_SCAN, "still a scan");
+	/* Past the cap the count is a FLOOR, not a claim. Dedup can only scan
+	 * what is stored, so continuing to increment reported 1032 for 33
+	 * distinct ports in an earlier version -- a number the comment claimed
+	 * was exact. */
+	CHECK(e && e->ports_seen == OBS_MAX_PORTS, "count stops at the cap");
+	CHECK(e && e->ports_truncated, "and says it is truncated");
+	CHECK(e && obs_classify(&t, e) == OBS_PORT_SCAN,
+	      "still a scan -- threshold 8 is reached long before the cap");
 	obs_table_free(&t);
 }
 
@@ -372,6 +378,21 @@ static void test_decode_truncated_l4_gives_no_port(void)
 	CHECK(port == 0, "no L4 bytes means no port");
 }
 
+static void test_unreachable_scan_threshold_is_refused(void)
+{
+	/* ports_seen cannot exceed the store, so a threshold above it can never
+	 * be reached and scan detection would be silently off. Refusing to
+	 * start is the correct failure. */
+	struct obs_table t;
+	CHECK(!obs_table_init(&t, 64, OBS_MAX_PORTS + 1),
+	      "threshold above the port store is refused");
+	CHECK(obs_table_init(&t, 64, OBS_MAX_PORTS),
+	      "threshold exactly at the cap is allowed");
+	obs_table_free(&t);
+	CHECK(obs_table_init(&t, 64, 8), "the default is well within it");
+	obs_table_free(&t);
+}
+
 int main(void)
 {
 	test_addr_roundtrip();
@@ -383,6 +404,7 @@ int main(void)
 	test_full_table_drops_are_counted();
 	test_ndjson_output();
 	test_reset_clears_counters();
+	test_unreachable_scan_threshold_is_refused();
 	test_decode_v4_tcp();
 	test_decode_v4_udp();
 	test_decode_v4_with_options();

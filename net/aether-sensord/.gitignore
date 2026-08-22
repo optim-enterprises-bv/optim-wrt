@@ -1,2 +1,5 @@
-test/test_sigdb
+# Host test binaries. Built by test/Makefile, never committed -- a stale
+# binary in the tree is a test result nobody produced.
+test/test_*
+!test/test_*.c
 *.o

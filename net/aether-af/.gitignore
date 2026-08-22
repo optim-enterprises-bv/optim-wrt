@@ -1,4 +1,9 @@
-test/test_match
-test/test_match_asan
+test/test_*
+!test/test_*.c
 *.o
 *.ko
+*.mod
+*.mod.c
+.*.cmd
+Module.symvers
+modules.order

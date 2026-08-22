@@ -1,0 +1,31 @@
+config aether-fwlogs 'main'
+	# Collection is OFF by default. Firewall-drop records are attacker IP
+	# addresses, which are personal data; enabling this is a decision with a
+	# legal basis behind it, not a packaging default. See ADR-019 §9.
+	option enabled '0'
+
+	# NFLOG group. Must match the group in the firewall rule installed by
+	# /etc/init.d/aether-fwlogs. Change both or neither.
+	option group '5'
+
+	# Distinct source addresses held per interval. Bounds memory; overflow
+	# is counted and reported, never silently dropped.
+	option capacity '4096'
+
+	# Seconds between spool batches.
+	option interval '300'
+
+	# Distinct destination ports at or above which a source is reported as
+	# a port scan rather than a blocked connection.
+	option scan_ports '8'
+
+	option spool_dir '/var/spool/aether-fwlogs'
+
+	# Spool files retained if nothing drains them. Oldest are removed first.
+	option max_batches '32'
+
+	# Firewall zone whose input drops are logged. Must be the WAN-facing
+	# zone: logging a LAN zone would report the subscriber's own network.
+	# The daemon refuses private/reserved sources regardless, and counts
+	# the refusals, but the rule should be correct in the first place.
+	option zone 'wan'

@@ -6,7 +6,7 @@
  * Host-side unit tests for the aggregation logic. Builds with plain gcc --
  * no netlink, no OpenWrt toolchain, no device:
  *
- *     make -C net/aether-fwlogs/test
+ *     make -C net/aether-sensord/test
  */
 
 #include "../src/observe.h"

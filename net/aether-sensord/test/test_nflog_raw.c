@@ -15,6 +15,7 @@
 #include <linux/netfilter/nfnetlink_log.h>
 #include <linux/netlink.h>
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
 
 static int failures, checks;
@@ -127,6 +128,51 @@ static void test_nulls_and_empty(void)
     CHECK(nfr_parse_buffer(&c, b, sizeof(b), NULL, NULL) == 0, "null callback");
 }
 
+/*
+ * Guards the failure that hid for the whole life of the standalone sensor:
+ * sendto() succeeds, the kernel refuses with EPERM, and the daemon reports
+ * itself live while receiving nothing.
+ */
+static void test_ack_parsing(void)
+{
+    uint8_t buf[NLMSG_LENGTH(sizeof(struct nlmsgerr))];
+    struct nlmsghdr *nlh = (struct nlmsghdr *)buf;
+    struct nlmsgerr *e = (struct nlmsgerr *)NLMSG_DATA(nlh);
+
+    memset(buf, 0, sizeof(buf));
+    nlh->nlmsg_len = sizeof(buf);
+    nlh->nlmsg_type = NLMSG_ERROR;
+
+    e->error = 0;
+    CHECK(nfr_parse_ack(buf, sizeof(buf)) == true,
+          "explicit success ACK is accepted");
+
+    e->error = -EPERM;
+    CHECK(nfr_parse_ack(buf, sizeof(buf)) == false,
+          "EPERM is a failure, not a live sensor");
+
+    e->error = -ENOENT;
+    CHECK(nfr_parse_ack(buf, sizeof(buf)) == false,
+          "any negative error is a failure");
+
+    e->error = 0;
+    nlh->nlmsg_type = NLMSG_DONE;
+    CHECK(nfr_parse_ack(buf, sizeof(buf)) == false,
+          "a non-ERROR reply is not read as consent");
+
+    nlh->nlmsg_type = NLMSG_ERROR;
+    CHECK(nfr_parse_ack(buf, NLMSG_HDRLEN) == false,
+          "a truncated ACK is refused, not trusted");
+    CHECK(nfr_parse_ack(buf, 0) == false, "empty is refused");
+    CHECK(nfr_parse_ack(NULL, sizeof(buf)) == false, "NULL is refused");
+
+    /* A header claiming more than was delivered must not be read past;
+     * NLMSG_OK is what catches this. */
+    nlh->nlmsg_len = sizeof(buf) + 64;
+    CHECK(nfr_parse_ack(buf, sizeof(buf)) == false,
+          "an over-long declared length is refused");
+}
+
 int main(void)
 {
     test_extracts_payload();
@@ -134,6 +180,7 @@ int main(void)
     test_lying_attribute_length();
     test_wrong_subsystem_ignored();
     test_nulls_and_empty();
+    test_ack_parsing();
     printf("%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;
 }

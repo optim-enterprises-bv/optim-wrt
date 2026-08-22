@@ -179,9 +179,15 @@ arm's-length netlink interface**, and the module holds **hashes, not
 signatures** — it cannot tell you what YouTube is. Moving the matcher into the
 kernel would move the product across the boundary with it.
 
-**Known defect:** `aether-fwlogs` declares BSD-3-Clause but links
-`libnetfilter_log` (GPL-2.0-or-later). Wrong today. Fix is porting to `libmnl`
-(LGPL-2.1+) — the same move the NFQUEUE path needs anyway.
+**Resolved:** `aether-fwlogs` declared BSD-3-Clause while linking
+`libnetfilter_log` (GPL-2.0-or-later) — a false licence claim. Rather than move
+to `libmnl` (LGPL-2.1+), the NFLOG receive path was rewritten directly against
+`socket(AF_NETLINK, SOCK_RAW, NETLINK_NETFILTER)`, which needs no library at
+all. `ldd` on the built binary now reports zero `netfilter` objects, so the
+declared licence is true rather than merely intended.
+
+That package has since been merged into `aether-sensord` (ADR-020 decision 1);
+its sources live in `net/aether-sensord/src/`.
 
 ## Data feeds
 

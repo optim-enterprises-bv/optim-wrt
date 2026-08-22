@@ -5,7 +5,13 @@
  *
  * aether-sensord -- device-side security service (ADR-020).
  *
- * WHAT IS WIRED IN THIS BUILD: the attacker-reputation path, end to end.
+ * ONE DAEMON, SEVERAL SOURCES. ADR-020 decision 1: this replaces oafd, nDPId
+ * and the former standalone aether-fwlogs. A single poll() loop watches the
+ * NFLOG socket and the feed spool, so there is one config surface, one
+ * identity, one uplink and one health surface rather than four.
+ *
+ * WHAT IS WIRED IN THIS BUILD: the attacker-reputation path, end to end, and
+ * firewall-drop sensing.
  * Feed messages arrive as files in a spool directory, are parsed, folded into
  * the delta/serial state machine, rendered to nftables commands, applied, and
  * then VERIFIED against the kernel's own view of the set.
@@ -36,6 +42,8 @@
  */
 
 #include "afpush.h"
+#include "nflog_raw.h"
+#include "observe.h"
 #include "apply.h"
 #include "feed.h"
 #include "match.h"
@@ -50,6 +58,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <poll.h>
 #include <sys/stat.h>
 #include <syslog.h>
 #include <time.h>
@@ -88,6 +98,22 @@ struct config {
 	 * start because an optional consumer is absent is worse than one that
 	 * says so and carries on. */
 	int push_af;
+
+	/*
+	 * Firewall-drop sensing, formerly the separate aether-fwlogs daemon.
+	 *
+	 * OFF BY DEFAULT and separately consented, unlike everything else here.
+	 * The rest of this daemon BLOCKS hostile inbound and collects nothing
+	 * about the subscriber; this component REPORTS attacker addresses,
+	 * which are personal data under GDPR. Merging the daemons must not
+	 * merge their consent, so the flag stays its own (ADR-019 section 9).
+	 */
+	int sense_enabled;
+	unsigned sense_group;
+	size_t sense_capacity;
+	uint32_t sense_scan_ports;
+	const char *sense_spool;
+	unsigned sense_max_batches;
 };
 
 /*
@@ -275,12 +301,138 @@ static void scan_spool(const struct config *cfg, struct feed_client *fc,
 	closedir(d);
 }
 
+/*
+ * Firewall-drop sensing, formerly the aether-fwlogs daemon.
+ *
+ * A packet the firewall dropped is a packet nobody wanted, so recording its
+ * source costs the subscriber nothing and tells the fleet who is knocking.
+ * Private sources are discarded here rather than at report time -- a
+ * misconfigured LAN host must never be published as an attacker.
+ */
+struct sense_ctx {
+	struct obs_table tbl;
+	uint64_t seen;
+	uint64_t undecodable;
+};
+
+static void on_sensed_packet(const uint8_t *pkt, uint32_t len, void *user)
+{
+	struct sense_ctx *sc = user;
+	struct obs_addr src;
+	uint16_t dport = 0;
+
+	if (!sc || len > (uint32_t)INT_MAX)
+		return;
+	if (obs_decode(pkt, (int)len, &src, &dport) != 0) {
+		sc->undecodable++;
+		return;
+	}
+	sc->seen++;
+	/* obs_record is the single owner of the private-source rule and counts
+	 * its own refusals. Re-checking here would give two counters that can
+	 * disagree, and the one reported would be the one nobody trusts. */
+	obs_record(&sc->tbl, &src, dport, (int64_t)time(NULL));
+}
+
+/* Keep at most `max_batches` spool files, deleting oldest first. */
+static void sense_prune(const struct config *cfg)
+{
+	char cmd[640];
+
+	snprintf(cmd, sizeof(cmd),
+	         "ls -1t '%s'/batch-*.ndjson 2>/dev/null | tail -n +%u | "
+	         "xargs -r rm -f",
+	         cfg->sense_spool, cfg->sense_max_batches + 1);
+	if (system(cmd) != 0)
+		syslog(LOG_DEBUG, "sense spool prune returned non-zero");
+}
+
+/*
+ * Write one NDJSON batch and reset the table.
+ *
+ * ac-client ships the spool; this daemon opens no network socket. The batch
+ * carries the table's own refusal counters, so the backend can tell a quiet
+ * network from an overwhelmed sensor or a mis-scoped firewall rule. A sensor
+ * that hides its own degradation is worse than no sensor (ADR-017).
+ */
+static void sense_flush(const struct config *cfg, struct sense_ctx *sc)
+{
+	char path[512], tmp[540];
+	time_t now;
+	FILE *f;
+	long n;
+	int err;
+
+	if (sc->tbl.used == 0 && sc->tbl.dropped_full == 0 &&
+	    sc->tbl.dropped_private == 0)
+		return;
+
+	now = time(NULL);
+	snprintf(path, sizeof(path), "%s/batch-%lld.ndjson", cfg->sense_spool,
+	         (long long)now);
+	snprintf(tmp, sizeof(tmp), "%s.partial", path);
+
+	f = fopen(tmp, "w");
+	if (!f) {
+		syslog(LOG_ERR, "cannot open sense spool %s: %s", tmp,
+		       strerror(errno));
+		return;
+	}
+
+	n = obs_write_ndjson(&sc->tbl, f);
+	fprintf(f,
+	        "{\"meta\":true,\"sources\":%ld,\"dropped_full\":%llu,"
+	        "\"dropped_private\":%llu,\"undecodable\":%llu,"
+	        "\"interval\":%u,\"emitted_at\":%lld}\n",
+	        n < 0 ? 0 : n, (unsigned long long)sc->tbl.dropped_full,
+	        (unsigned long long)sc->tbl.dropped_private,
+	        (unsigned long long)sc->undecodable, cfg->interval,
+	        (long long)now);
+
+	err = ferror(f);
+	if (fclose(f) != 0 || err || n < 0) {
+		syslog(LOG_ERR, "sense spool write failed, discarding batch");
+		unlink(tmp);
+		obs_table_reset(&sc->tbl);
+		return;
+	}
+
+	/* Rename only after a complete write, so a consumer never sees a
+	 * half-written batch. */
+	if (rename(tmp, path) != 0) {
+		syslog(LOG_ERR, "cannot rename %s: %s", tmp, strerror(errno));
+		unlink(tmp);
+	} else {
+		syslog(LOG_INFO, "sensing: wrote %ld source records to %s", n,
+		       path);
+		if (sc->tbl.dropped_private > 0)
+			syslog(LOG_WARNING,
+			       "sensing: %llu private-source records refused -- "
+			       "the NFLOG rule is logging LAN traffic and should "
+			       "be WAN-scoped",
+			       (unsigned long long)sc->tbl.dropped_private);
+		if (sc->tbl.dropped_full > 0)
+			syslog(LOG_WARNING,
+			       "sensing: %llu records dropped, table full "
+			       "(capacity %zu)",
+			       (unsigned long long)sc->tbl.dropped_full,
+			       sc->tbl.capacity);
+	}
+
+	sense_prune(cfg);
+	obs_table_reset(&sc->tbl);
+}
+
 static void usage(const char *a0)
 {
 	fprintf(stderr,
 	        "usage: %s [-d db] [-s spool] [-n nft-include] [-i interval]\n"
 	        "          [-T set-timeout-sec] [-N nft-path] [-k] [-f] [-1]\n"
-	        "  -k  push compiled app rules to the aether-af kernel module\n",
+	        "          [-S] [-g nflog-group] [-c capacity] [-p scan-ports]\n"
+	        "          [-D sense-spool] [-b sense-max-batches]\n"
+	        "  -k  push compiled app rules to the aether-af kernel module\n"
+	        "  -S  enable firewall-drop sensing (OFF by default: reports\n"
+	        "      attacker addresses, which is separately consented)\n",
 	        a0);
 }
 
@@ -296,10 +448,16 @@ int main(int argc, char **argv)
 		.once = 0,
 		.nft_path = NULL,
 		.push_af = 0,
+		.sense_enabled = 0,
+		.sense_group = 5,
+		.sense_capacity = 4096,
+		.sense_scan_ports = 8,
+		.sense_spool = "/var/spool/aether-sensord/sense",
+		.sense_max_batches = 32,
 	};
 
 	int opt;
-	while ((opt = getopt(argc, argv, "d:s:n:i:T:N:f1kh")) != -1) {
+	while ((opt = getopt(argc, argv, "d:s:n:i:T:N:g:c:p:D:b:f1kSh")) != -1) {
 		switch (opt) {
 		case 'd': cfg.db_path = optarg; break;
 		case 's': cfg.spool_dir = optarg; break;
@@ -308,6 +466,12 @@ int main(int argc, char **argv)
 		case 'T': cfg.set_timeout = (uint32_t)strtoul(optarg, NULL, 10); break;
 		case 'N': cfg.nft_path = optarg; break;
 		case 'k': cfg.push_af = 1; break;
+		case 'S': cfg.sense_enabled = 1; break;
+		case 'g': cfg.sense_group = (unsigned)strtoul(optarg, NULL, 10); break;
+		case 'c': cfg.sense_capacity = (size_t)strtoul(optarg, NULL, 10); break;
+		case 'p': cfg.sense_scan_ports = (uint32_t)strtoul(optarg, NULL, 10); break;
+		case 'D': cfg.sense_spool = optarg; break;
+		case 'b': cfg.sense_max_batches = (unsigned)strtoul(optarg, NULL, 10); break;
 		case 'f': cfg.foreground = 1; break;
 		case '1': cfg.once = 1; break;
 		default: usage(argv[0]); return 2;
@@ -468,14 +632,52 @@ int main(int argc, char **argv)
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 
+	struct sense_ctx sense;
+	struct nfr_conn nfr;
+	int sense_live = 0;
+
+	memset(&sense, 0, sizeof(sense));
+	memset(&nfr, 0, sizeof(nfr));
+	nfr.fd = -1;
+	if (cfg.sense_enabled) {
+		if (!obs_table_init(&sense.tbl, cfg.sense_capacity,
+		                    cfg.sense_scan_ports)) {
+			/* obs_table_init refuses a threshold it cannot honour
+			 * rather than silently disabling scan detection. */
+			syslog(LOG_ERR, "sensing: refusing capacity=%zu "
+			                "scan_ports=%u; sensing NOT started",
+			       cfg.sense_capacity, cfg.sense_scan_ports);
+		} else if (!nfr_open(&nfr, (uint16_t)cfg.sense_group, 128)) {
+			syslog(LOG_WARNING,
+			       "sensing: cannot bind NFLOG group %u (%s) -- "
+			       "sensing NOT started. Reputation enforcement is "
+			       "unaffected.",
+			       cfg.sense_group, strerror(errno));
+			obs_table_free(&sense.tbl);
+		} else {
+			sense_live = 1;
+			mkdir(cfg.sense_spool, 0750);
+			syslog(LOG_INFO,
+			       "sensing: live on NFLOG group %u, capacity %zu, "
+			       "scan threshold %u ports",
+			       cfg.sense_group, cfg.sense_capacity,
+			       cfg.sense_scan_ports);
+		}
+	}
+
 	syslog(LOG_INFO,
-	       "started: spool=%s interval=%us set_timeout=%us. Reputation "
-	       "enforcement is live; application classification is NOT wired in "
-	       "this build.",
-	       cfg.spool_dir, cfg.interval, cfg.set_timeout);
+	       "started: spool=%s interval=%us set_timeout=%us sensing=%s. "
+	       "Reputation enforcement is live; application classification is "
+	       "NOT wired in this build.",
+	       cfg.spool_dir, cfg.interval, cfg.set_timeout,
+	       sense_live ? "live" : (cfg.sense_enabled ? "FAILED" : "off"));
 
 	do {
 		scan_spool(&cfg, &fc, &ap, &target);
+
+		/* Emit before waiting, so `-1` produces a batch too. */
+		if (sense_live)
+			sense_flush(&cfg, &sense);
 
 		if (feed_client_needs_resync(&fc))
 			syslog(LOG_WARNING,
@@ -485,9 +687,91 @@ int main(int argc, char **argv)
 
 		if (cfg.once)
 			break;
-		for (unsigned s = 0; s < cfg.interval && running; s++)
-			sleep(1);
+
+		/*
+		 * One loop, two sources. Waiting on the NFLOG socket rather
+		 * than sleeping means a burst of drops is drained as it
+		 * arrives instead of accumulating in the socket buffer for a
+		 * whole interval -- an overflowed NFLOG buffer loses packets
+		 * silently, which is exactly the failure this daemon exists to
+		 * report.
+		 *
+		 * When sensing is off this degenerates to an interruptible
+		 * sleep, which is still better than sleep(1) in a loop.
+		 */
+		{
+			struct pollfd pfd;
+			unsigned waited = 0;
+
+			while (running && waited < cfg.interval) {
+				int timeout_ms = 1000;
+				int rc;
+
+				if (!sense_live) {
+					sleep(1);
+					waited++;
+					continue;
+				}
+				pfd.fd = nfr.fd;
+				pfd.events = POLLIN;
+				pfd.revents = 0;
+				rc = poll(&pfd, 1, timeout_ms);
+				if (rc < 0) {
+					if (errno == EINTR)
+						continue; /* signal; re-test running */
+					syslog(LOG_ERR, "poll: %s", strerror(errno));
+					break;
+				}
+				if (rc == 0) {
+					waited++;
+					continue;
+				}
+				if (pfd.revents & POLLIN) {
+					long got = nfr_dispatch(&nfr,
+					                        on_sensed_packet,
+					                        &sense);
+					if (got < 0)
+						syslog(LOG_WARNING,
+						       "sensing: dispatch error, "
+						       "packets may have been lost");
+				}
+				if (pfd.revents & (POLLERR | POLLHUP)) {
+					syslog(LOG_ERR, "sensing: NFLOG socket "
+					                "error; sensing stops, "
+					                "enforcement continues");
+					nfr_close(&nfr);
+					sense_live = 0;
+				}
+			}
+		}
 	} while (running);
+
+	if (sense_live) {
+		/* Do not discard a partial interval on shutdown: those records
+		 * were observed and are as real as any other. */
+		sense_flush(&cfg, &sense);
+		/* Report what was and was not counted. A silent zero is
+		 * indistinguishable from "nobody attacked us", so the discards
+		 * and the full-table refusals are stated alongside the total.
+		 *
+		 * Read BEFORE the free, and only on the path where the table
+		 * was actually initialised -- the failure branches above have
+		 * already freed or never built it. */
+		syslog(LOG_INFO,
+		       "sensing: %llu packets decoded, %llu undecodable, "
+		       "%llu private sources discarded, %llu refused (table "
+		       "full), %zu distinct sources held",
+		       (unsigned long long)sense.seen,
+		       (unsigned long long)sense.undecodable,
+		       (unsigned long long)sense.tbl.dropped_private,
+		       (unsigned long long)sense.tbl.dropped_full,
+		       sense.tbl.used);
+		nfr_close(&nfr);
+		obs_table_free(&sense.tbl);
+	} else if (cfg.sense_enabled) {
+		syslog(LOG_WARNING, "sensing: was requested but never ran; "
+		                    "nothing was observed this session");
+	}
 
 	syslog(LOG_INFO,
 	       "stopping: %llu deltas, %llu snapshots applied, %llu resyncs, "

@@ -21,3 +21,45 @@ config aether-sensord 'main'
 	# so a controller that goes silent stops blocking rather than leaving a
 	# stale set enforcing forever. Matches the scorer's 7-day half-life.
 	option set_timeout '604800'
+
+# --- Firewall-drop sensing (formerly the aether-fwlogs package) ------------
+#
+# SEPARATE CONSENT, NOT A SUB-OPTION OF `enabled` ABOVE.
+#
+# The daemons were merged; their consent was deliberately not. Everything
+# above BLOCKS hostile inbound and collects nothing about the subscriber.
+# This section REPORTS attacker addresses, which are personal data under
+# GDPR. Enabling it is a decision with a legal basis behind it, not a
+# packaging default, so it stays off even when the daemon is on.
+# See ADR-019 §9 and ADR-020 decision 1.
+	option sense_enabled '0'
+
+	# NFLOG group. Must match the group in the rule installed by
+	# /etc/init.d/aether-sensord. Change both or neither.
+	option sense_group '5'
+
+	# Distinct source addresses held. Bounds memory; overflow is counted
+	# and reported at shutdown, never silently dropped.
+	option sense_capacity '4096'
+
+	# Distinct destination ports at or above which a source is reported as
+	# a port scan rather than a blocked connection.
+	#
+	# MUST NOT exceed OBS_MAX_PORTS (32). Distinct ports are tracked in a
+	# fixed store, so a threshold above it can never be reached and scan
+	# detection would be silently disabled. The daemon refuses to start
+	# sensing rather than run in that state.
+	option sense_scan_ports '8'
+
+	# Firewall zone whose input drops are logged. Must be the WAN-facing
+	# zone: logging a LAN zone would report the subscriber's own network.
+	# Private sources are refused and counted regardless, but the rule
+	# should be correct in the first place.
+	option sense_zone 'wan'
+
+	# Batches are written here as NDJSON and shipped by ac-client, which
+	# holds the device's mTLS identity. This daemon opens no network socket.
+	option sense_spool '/var/spool/aether-sensord/sense'
+
+	# Batch files retained if nothing drains them. Oldest removed first.
+	option sense_max_batches '32'

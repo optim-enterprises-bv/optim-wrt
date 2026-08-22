@@ -3,7 +3,8 @@
  *
  * This is free software, licensed under the BSD 3-Clause License.
  *
- * Observation aggregation for aether-fwlogs.
+ * Observation aggregation for aether-sensord (originally the aether-fwlogs
+ * daemon, merged in; see ADR-020 decision 1).
  *
  * Deliberately free of netlink and libnetfilter_log includes: everything here
  * is pure state machinery over (source address, destination port, timestamp)

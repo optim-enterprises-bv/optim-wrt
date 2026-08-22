@@ -6,7 +6,9 @@
 
 #include "nflog_raw.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
+#include <poll.h>
 #include <linux/netfilter/nfnetlink.h>
 #include <linux/netfilter/nfnetlink_log.h>
 #include <linux/netlink.h>
@@ -20,6 +22,68 @@ struct nfr_nfgenmsg {
 	uint8_t version;
 	uint16_t res_id; /* group, big-endian */
 };
+
+/*
+ * Read the ACK the kernel owes us for an NLM_F_ACK request.
+ *
+ * Returns true only on an explicit success ACK (NLMSG_ERROR with error == 0).
+ * A negative error, a malformed reply, or no reply at all is a failure: the
+ * whole point is to refuse to claim success we have not been told about.
+ *
+ * The wait is bounded. A blocking recv here would hang the daemon at startup
+ * on a kernel that never answers, which is a worse failure than not sensing.
+ */
+bool nfr_parse_ack(const uint8_t *buf, size_t len)
+{
+	const struct nlmsghdr *nlh;
+	const struct nlmsgerr *err;
+
+	if (!buf || len < NLMSG_HDRLEN)
+		return false;
+	nlh = (const struct nlmsghdr *)buf;
+	if (!NLMSG_OK(nlh, (unsigned)len))
+		return false;
+	if (nlh->nlmsg_type != NLMSG_ERROR)
+		return false; /* unexpected: do not read it as consent */
+	if (nlh->nlmsg_len < NLMSG_LENGTH(sizeof(*err)))
+		return false;
+
+	err = (const struct nlmsgerr *)NLMSG_DATA(nlh);
+	if (err->error != 0) {
+		errno = -err->error;
+		return false;
+	}
+	return true;
+}
+
+static bool nfr_read_ack(int fd)
+{
+	uint8_t buf[512];
+	struct pollfd pfd;
+	ssize_t n;
+	int rc;
+
+	pfd.fd = fd;
+	pfd.events = POLLIN;
+	pfd.revents = 0;
+	do {
+		rc = poll(&pfd, 1, 1000);
+	} while (rc < 0 && errno == EINTR);
+	if (rc <= 0) {
+		errno = (rc == 0) ? ETIMEDOUT : errno;
+		return false;
+	}
+
+	do {
+		n = recv(fd, buf, sizeof(buf), 0);
+	} while (n < 0 && errno == EINTR);
+	if (n < 0)
+		return false;
+	if ((size_t)n < NLMSG_HDRLEN)
+		return false;
+
+	return nfr_parse_ack(buf, (size_t)n);
+}
 
 static bool nfr_send_config(int fd, uint16_t group, uint8_t family,
                             uint8_t command, const void *extra,
@@ -35,7 +99,11 @@ static bool nfr_send_config(int fd, uint16_t group, uint8_t family,
 
 	memset(buf, 0, sizeof(buf));
 	nlh->nlmsg_type = (uint16_t)((NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_CONFIG);
-	nlh->nlmsg_flags = NLM_F_REQUEST;
+	/* ACK is requested so the caller can tell "the kernel accepted this"
+	 * from "the write returned a positive number". Without it, an
+	 * unprivileged bind succeeds at sendto() and fails in the kernel, and
+	 * the sensor reports itself live while receiving nothing. */
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
 	nlh->nlmsg_seq = 1;
 	nlh->nlmsg_pid = 0;
 
@@ -68,7 +136,10 @@ static bool nfr_send_config(int fd, uint16_t group, uint8_t family,
 	do {
 		n = sendto(fd, buf, off, 0, (struct sockaddr *)&dst, sizeof(dst));
 	} while (n < 0 && errno == EINTR);
-	return n > 0;
+	if (n <= 0)
+		return false;
+
+	return nfr_read_ack(fd);
 }
 
 bool nfr_open(struct nfr_conn *c, uint16_t group, uint16_t copy_range)
@@ -95,7 +166,11 @@ bool nfr_open(struct nfr_conn *c, uint16_t group, uint16_t copy_range)
 	}
 
 	/* PF_BIND for both families. A v6-only or v4-only deployment simply
-	 * sees no traffic on the unused one. */
+	 * sees no traffic on the unused one.
+	 *
+	 * Deliberately advisory: PF_BIND is a no-op on current kernels, so a
+	 * failure here is not evidence that logging will not work. The group
+	 * BIND below is the one that decides, and that one is checked. */
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.command = NFULNL_CFG_CMD_PF_BIND;
 	nfr_send_config(c->fd, 0, AF_INET, 0, &cmd, sizeof(cmd), NFULA_CFG_CMD);
@@ -117,9 +192,11 @@ bool nfr_open(struct nfr_conn *c, uint16_t group, uint16_t copy_range)
 	 */
 	memset(&mode, 0, sizeof(mode));
 	mode.copy_mode = NFULNL_COPY_PACKET;
-	mode.copy_range = (uint32_t)((copy_range >> 24) | ((copy_range >> 8) & 0xff00) |
-	                             ((copy_range << 8) & 0xff0000) |
-	                             ((uint32_t)copy_range << 24));
+	/* Big-endian on the wire. htonl rather than a hand-rolled swap: the
+	 * open-coded version happened to be right for 16-bit values on a
+	 * little-endian host and wrong on big-endian, and OpenWrt still ships
+	 * big-endian MIPS targets. */
+	mode.copy_range = htonl((uint32_t)copy_range);
 	nfr_send_config(c->fd, group, AF_UNSPEC, 0, &mode, sizeof(mode),
 	                NFULA_CFG_MODE);
 

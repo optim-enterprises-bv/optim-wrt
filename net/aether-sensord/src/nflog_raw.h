@@ -80,6 +80,16 @@ long nfr_dispatch(struct nfr_conn *c, nfr_packet_fn cb, void *user);
  * malformed and truncated input on the host, with no netlink, no root and no
  * kernel. Returns packets dispatched; increments `malformed` on bad input.
  */
+/*
+ * Parse a netlink ACK. Exposed so the "did the kernel actually accept this"
+ * decision is testable without root -- the failure it guards against is a
+ * sensor that reports itself live while receiving nothing.
+ *
+ * True ONLY for an explicit success ACK. Anything else, including a reply we
+ * do not recognise, is refused rather than read as consent.
+ */
+bool nfr_parse_ack(const uint8_t *buf, size_t len);
+
 long nfr_parse_buffer(struct nfr_conn *c, const uint8_t *buf, size_t len,
                       nfr_packet_fn cb, void *user);
 

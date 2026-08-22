@@ -27,9 +27,14 @@ define Package/aether-sensord
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Firewall
-  TITLE:=Device-side security service (reputation enforcement)
+  TITLE:=Device-side security service (reputation enforcement + sensing)
   URL:=https://github.com/optim-enterprises-bv/optim-wrt
   DEPENDS:=+libc +nftables-json
+  # Supersedes the standalone sensor daemon, whose sources now live here.
+  # PROVIDES lets an installed aether-fwlogs be replaced rather than sit
+  # alongside this one feeding the same NFLOG group from a second process.
+  PROVIDES:=aether-fwlogs
+  CONFLICTS:=aether-fwlogs
 endef
 
 define Package/aether-sensord/description
@@ -39,6 +44,16 @@ define Package/aether-sensord/description
   Feed messages arrive as files in a spool directory, delivered by ac-client,
   which already holds the device's mTLS identity. This daemon opens no network
   socket and holds no credential.
+
+  Also carries firewall-drop sensing, formerly the separate aether-fwlogs
+  package: one poll loop watches both the NFLOG socket and the feed spool, so
+  there is one config surface, one identity and one health surface instead of
+  two daemons that could disagree.
+
+  Sensing is OFF by default and consented separately from enforcement. The
+  enforcement half blocks hostile inbound and collects nothing about the
+  subscriber; the sensing half reports attacker addresses, which are personal
+  data. Merging the daemons did not merge their consent (ADR-019 section 9).
 
   The delta/serial/resync protocol means a missed update is recoverable: a gap
   leaves the set untouched and demands a snapshot, rather than applying across
@@ -160,6 +175,8 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/feed.c \
 		$(PKG_BUILD_DIR)/apply.c \
 		$(PKG_BUILD_DIR)/afpush.c \
+		$(PKG_BUILD_DIR)/nflog_raw.c \
+		$(PKG_BUILD_DIR)/observe.c \
 		$(TARGET_LDFLAGS)
 endef
 

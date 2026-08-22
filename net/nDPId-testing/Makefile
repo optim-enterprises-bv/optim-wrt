@@ -58,7 +58,18 @@ config NDPID_TESTING_LIBNDPI_COMMIT_HASH
 
 config NDPID_TESTING_INFLUXDB
    bool "nDPIsrvd-influxdb"
-   depends on PACKAGE_nDPId-testing && PACKAGE_libcurl
+   # NOT "depends on PACKAGE_nDPId-testing". DEPENDS above carries
+   # +NDPID_TESTING_INFLUXDB:libcurl, which makes the PACKAGE depend on this
+   # SYMBOL -- and a symbol that also depends on the package closes the loop:
+   #
+   #   symbol PACKAGE_nDPId-testing depends on NDPID_TESTING_INFLUXDB
+   #   symbol NDPID_TESTING_INFLUXDB depends on PACKAGE_nDPId-testing
+   #   error: recursive dependency detected!
+   #
+   # kconfig bails on that, which leaves the generated config in a state where
+   # selections do not stick. Options declared inside Package/<name>/config are
+   # already scoped to that package, so the dependency was never needed.
+   depends on PACKAGE_libcurl
    default n
    help
      An InfluxDB push daemon. It aggregates various statistics gathered from nDPId.

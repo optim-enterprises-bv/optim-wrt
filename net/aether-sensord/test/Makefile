@@ -1,6 +1,6 @@
 # Host-side unit tests. No OpenWrt toolchain, no device, no nDPI.
 CFLAGS ?= -std=gnu11 -Wall -Wextra -Werror -O1 -g -D_GNU_SOURCE
-BINS = test_sigdb test_policy test_nft test_feed test_apply
+BINS = test_sigdb test_policy test_nft test_feed test_apply test_afpush
 .PHONY: all check clean
 all: check
 test_sigdb: test_sigdb.c ../src/sigdb.c ../src/match.c ../src/sigdb.h ../src/match.h
@@ -15,6 +15,9 @@ test_feed: test_feed.c ../src/feed.c ../src/nft.c ../src/feed.h
 
 test_apply: test_apply.c ../src/apply.c ../src/nft.c ../src/apply.h
 	$(CC) $(CFLAGS) -o $@ test_apply.c ../src/apply.c ../src/nft.c
+
+test_afpush: test_afpush.c ../src/afpush.c ../src/policy.c ../src/sigdb.c ../src/afpush.h
+	$(CC) $(CFLAGS) -o $@ test_afpush.c ../src/afpush.c ../src/policy.c ../src/sigdb.c
 
 check: $(BINS)
 	@for b in $(BINS); do echo "-- $$b"; ./$$b || exit 1; done

@@ -55,6 +55,26 @@ frame + header structs + hook overhead) against arm64's 16 KB kernel stack,
 about 2.5%. Kernel stack exhaustion is a real ring-0 failure mode that a host
 build cannot surface, which is why it is measured rather than assumed.
 
+## Symbol licence position, confirmed from the built artifact
+
+```
+aether_af.ko, 141,704 bytes, aarch64, built against 6.18.44/filogic
+
+  0 GPL-only (EXPORT_SYMBOL_GPL)
+ 25 plain EXPORT_SYMBOL
+```
+
+The only RCU-related symbol remaining is `synchronize_net`, which is plain
+`EXPORT_SYMBOL`. The previous build referenced `call_rcu` and
+`synchronize_rcu`, both GPL-only, and both were an implementation choice for
+the rule swap rather than a requirement of the job.
+
+This **removes the technical barrier** to a non-GPL declaration and nothing
+more. Whether a module compiled against kernel headers is a derivative work
+regardless of symbols is a question for counsel; `MODULE_LICENSE` is an
+assertion by the author that nothing adjudicates. The declaration stays
+GPL-2.0.
+
 ## What none of this proves
 
 Sized honestly, because the numbers above are easy to over-read:

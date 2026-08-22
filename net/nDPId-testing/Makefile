@@ -23,6 +23,17 @@ CMAKE_INSTALL:=1
 
 include $(INCLUDE_DIR)/kernel.mk
 include $(INCLUDE_DIR)/package.mk
+# nDPId's CMakeLists.txt refuses an in-source build:
+#
+#   CMake Error at CMakeLists.txt:14 (message):
+#     In-source builds are not allowed.
+#
+# cmake.mk builds in $(PKG_BUILD_DIR) unless told otherwise, so without this
+# the configure step fails the moment a CMakeCache.txt exists in the source
+# tree -- and it creates one there on every attempt, so the failure is sticky
+# and survives deleting the build directory.
+CMAKE_BINARY_SUBDIR:=build
+
 include $(INCLUDE_DIR)/cmake.mk
 
 define Package/nDPId-testing

@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ac-client
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=6
+PKG_RELEASE:=7
 
 # Track optim-enterprises-bv/ac-client over HTTPS at a pinned commit. The
 # in-repo package Makefile fetches over an SSH remote
@@ -127,6 +127,18 @@ endef
 define Package/ac-client/postinst
 #!/bin/sh
 set -e
+
+# Do nothing when the package is being unpacked into an image rather than
+# installed on a running device. Without this the notice below is written to
+# stdout during offline rootfs assembly, lands in the ImageBuilder's tar
+# stream, and breaks the build with:
+#
+#   tar: Deleting non-header from archive
+#   tar: Exiting with failure status due to previous errors
+#
+# IPKG_INSTROOT is set exactly in that case; this is the standard OpenWrt
+# guard and every postinst that prints needs it.
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
 
 echo ""
 echo "ac-client installed."

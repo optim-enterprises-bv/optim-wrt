@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -152,6 +152,11 @@ endef
 define Package/aether-sensord/postinst
 #!/bin/sh
 set -e
+
+# Nothing to say when unpacking into an image rather than installing on a
+# running device. Printing here writes into the ImageBuilder's tar stream and
+# fails the build with "tar: Deleting non-header from archive".
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
 
 echo ""
 echo "aether-sensord installed."

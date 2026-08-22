@@ -6,7 +6,17 @@ PKG_VERSION:=2021-01-26
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ASPLes/libaxl
 PKG_SOURCE_VERSION:=8430309514d204fde482ade968aa4f64e4637f30
-PKG_MIRROR_HASH:=c45ced2a273d71b5f702f10361db0aba065a0d59
+# 'skip' rather than a hash, matching ac-client and every other git source in
+# this feed. This previously held c45ced2a273d71b5f702f10361db0aba065a0d59 --
+# a 40-character SHA-1, i.e. a git commit id, where PKG_MIRROR_HASH must be a
+# 64-character SHA-256 of the generated tarball. It could therefore never match
+# and the package could never build from a clean dl/ directory.
+#
+# A real hash is not usable here: git archive output is not byte-reproducible
+# across git versions, which is why OpenWrt provides 'skip' for git sources.
+# The source is pinned by PKG_SOURCE_VERSION above, which is what actually
+# fixes what gets built.
+PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=LGPL-2.1-or-later
 PKG_LICENSE_FILES:=COPYING

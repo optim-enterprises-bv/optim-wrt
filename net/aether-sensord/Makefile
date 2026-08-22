@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=6
+PKG_RELEASE:=7
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -46,7 +46,7 @@ define Package/aether-sensord
   # +libndpi is LGPL-3.0-or-later and links into this BSD-3-Clause binary
   # without contaminating it. It is the LIBRARY; the nDPId daemon (GPL-3,
   # cannot enforce) is deliberately not used.
-  DEPENDS:=+libc +nftables-json +aether-appdb +libndpi
+  DEPENDS:=+libc +nftables-json +aether-appdb +libndpi +kmod-nfnetlink-log
   # Supersedes the standalone sensor daemon, whose sources now live here.
   # PROVIDES lets an installed aether-fwlogs be replaced rather than sit
   # alongside this one feeding the same NFLOG group from a second process.
@@ -146,7 +146,7 @@ define Package/aether-sensord/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/aether-sensord $(1)/etc/init.d/aether-sensord
 
-	$(INSTALL_DIR) $(1)/usr/share/nftables.d/table-pre/inet/fw4
+	$(INSTALL_DIR) $(1)/usr/share/nftables.d/table-prepend/inet/fw4
 endef
 
 define Package/aether-sensord/postinst

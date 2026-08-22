@@ -85,8 +85,8 @@ int main(int argc, char **argv)
 
 		uint16_t max_class = 0;
 		for (size_t k = 0; k < db.n_apps; k++)
-			if (db.apps[k].class_id > max_class)
-				max_class = db.apps[k].class_id;
+			if (db.apps[k].db_class > max_class)
+				max_class = db.apps[k].db_class;
 		printf("highest_class: %u\n", max_class);
 
 		/* The gate is on refusals, not on the headline count. A database
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 				printf("tag   : %s\n", a->tag);
 				printf("name  : %s\n", a->name);
 				printf("id    : %u\n", a->id);
-				printf("class : %u\n", a->class_id);
+				printf("class : %u\n", a->db_class);
 				size_t idx = (size_t)(a - db.apps);
 				for (size_t k = 0; k < db.n_rules; k++) {
 					if (db.rules[k].app_index != idx)
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 			} else {
 				printf("%s:%u -> tag=%s name=%s class=%u via=%s\n",
 				       host, port, m.app->tag, m.app->name,
-				       m.app->class_id, match_kind_str(m.kind));
+				       m.app->db_class, match_kind_str(m.kind));
 			}
 		}
 	} else {

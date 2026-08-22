@@ -100,7 +100,7 @@ static void test_parse_synthetic(void)
 	const struct sig_app *w = sig_db_by_tag(&db, "windowsupdate");
 	CHECK(w != NULL, "tag lookup");
 	CHECK(w && w->id == 13003, "id preserved");
-	CHECK(w && w->class_id == 13, "class is id/1000");
+	CHECK(w && w->db_class == 13, "class is id/1000");
 
 	/* WindowsUpdate carries TWO rules; a parser that stops at the first
 	 * comma silently loses half the signature. */
@@ -178,11 +178,29 @@ static void test_same_app_under_two_ids_merges(void)
 	m = match_flow(&db, "m.youtube.com", SIG_PROTO_TCP, 443);
 	CHECK(m.app == yt, "the bare-token pattern matches as a label");
 
-	/* ...but the bare token must not become a look-alike hole. */
+	/* The bare token is a LABEL-PREFIX match, which is a deliberate trade
+	 * documented in match.c. It must recover the real traffic domains these
+	 * services actually use... */
+	m = match_flow(&db, "youtubei.googleapis.com", SIG_PROTO_TCP, 443);
+	CHECK(m.app == yt, "InnerTube API recovered (label prefix)");
+
+	/* ...while still closing the look-alike hole that plain substring
+	 * matching would leave open. */
 	m = match_flow(&db, "evil-youtube.com", SIG_PROTO_TCP, 443);
-	CHECK(m.kind == MATCH_NONE, "label match is not substring match");
+	CHECK(m.kind == MATCH_NONE, "look-alike rejected: label does not START with the token");
+
+	/* Accepted cost of the same mechanism: a label that merely starts with
+	 * the token matches. This OVER-blocks rather than under-blocks, which is
+	 * the safer direction for parental controls, and it is the price of
+	 * recovering youtubei/tiktokcdn/tiktokv. Asserted so the trade is a
+	 * decision on record, not a surprise. */
 	m = match_flow(&db, "youtubefake.com", SIG_PROTO_TCP, 443);
-	CHECK(m.kind == MATCH_NONE, "no partial-label match");
+	CHECK(m.app == yt, "label-prefix over-blocks by design");
+
+	/* Inherent to a bare token and not solvable in the matcher: the token is
+	 * a whole label here, so it matches. Over-blocks, deliberate. */
+	m = match_flow(&db, "youtube.evil.com", SIG_PROTO_TCP, 443);
+	CHECK(m.app == yt, "token as a whole label matches wherever it appears");
 
 	sig_db_free(&db);
 }
@@ -279,7 +297,7 @@ static void test_real_database(void)
 	CHECK(yt != NULL, "youtube resolvable by tag");
 	if (yt)
 		printf("  tag 'youtube' -> first id %u, class %u\n", yt->id,
-		       yt->class_id);
+		       yt->db_class);
 
 	struct match_result m = match_flow(&db, "www.youtube.com", SIG_PROTO_TCP, 443);
 	CHECK(m.app && strcmp(m.app->tag, "youtube") == 0,
@@ -295,8 +313,8 @@ static void test_real_database(void)
 	 * per-class array is a defect and not a design choice. */
 	uint16_t max_class = 0;
 	for (size_t i = 0; i < db.n_apps; i++)
-		if (db.apps[i].class_id > max_class)
-			max_class = db.apps[i].class_id;
+		if (db.apps[i].db_class > max_class)
+			max_class = db.apps[i].db_class;
 	printf("  highest class id: %u\n", max_class);
 	CHECK(max_class > 32, "classes exceed 32 -- fixed 32-wide arrays overflow");
 
@@ -311,7 +329,7 @@ static void test_real_database(void)
 	/* Round-trip a real signature through the matcher. */
 	const struct sig_app *sig = sig_db_by_tag(&db, "samba");
 	if (sig)
-		printf("  tag 'samba' -> id %u class %u\n", sig->id, sig->class_id);
+		printf("  tag 'samba' -> id %u class %u\n", sig->id, sig->db_class);
 
 	sig_db_free(&db);
 }

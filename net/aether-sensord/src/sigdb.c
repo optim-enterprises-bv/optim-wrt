@@ -246,7 +246,7 @@ long sig_db_load(struct sig_db *db, FILE *fp)
 		struct sig_app app;
 		memset(&app, 0, sizeof(app));
 		app.id = (uint32_t)id;
-		app.class_id = (uint16_t)(id / 1000);
+		app.db_class = (uint16_t)(id / 1000);
 		copy_bounded(app.name, sizeof(app.name), sp + 1,
 		             (size_t)(colon - sp - 1));
 		sig_tag_normalise(app.name, app.tag, sizeof(app.tag));

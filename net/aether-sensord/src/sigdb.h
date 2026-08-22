@@ -57,7 +57,21 @@ enum sig_proto { SIG_PROTO_ANY = 0, SIG_PROTO_TCP = 6, SIG_PROTO_UDP = 17 };
 
 struct sig_app {
 	uint32_t id;       /* native numeric id, e.g. 39037 -- device-local only */
-	uint16_t class_id; /* id / 1000; observed range 10..42 in our database */
+	/*
+	 * The DATABASE'S OWN `#class` number (id / 1000), range 10..42.
+	 *
+	 * NOT the `class_list` array index, range 0..31, which is what ubus
+	 * reports and what aether has vendored. The two numberings disagree for
+	 * every app in the database -- id 10001 is class NUMBER 10 and class
+	 * INDEX 0 -- and conflating them is exactly what produced the
+	 * divide-by-1000 defect on the controller side.
+	 *
+	 * Deliberately not called `class_id`: that name invites mapping it
+	 * straight onto a controller category. If aether-sensord ever emits a
+	 * category northbound it must send the class_list INDEX or the app id,
+	 * never this field.
+	 */
+	uint16_t db_class;
 	char name[SIG_NAME_LEN]; /* as written in the file, e.g. "WindowsUpdate" */
 	char tag[SIG_TAG_LEN];   /* stable controller-facing id, e.g. "windowsupdate" */
 };

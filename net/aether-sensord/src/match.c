@@ -43,16 +43,38 @@ bool match_host_pattern(const char *host, const char *pattern,
 		return true;
 	}
 
-	/* A dotless pattern is a LABEL match: the shipped database contains
-	 * bare tokens such as `youtube` (id 11001), which OAF matches as a
-	 * substring. Substring matching would also match "evil-youtube.com",
-	 * so we match whole dot-separated labels instead -- same intent,
-	 * without the look-alike hole. */
+	/* A dotless pattern is a LABEL-PREFIX match.
+	 *
+	 * The shipped database contains ten bare tokens -- youtube, tiktok,
+	 * netflix, vimeo, dailymotion, hulu, vube, twitch, itemfix, yahoo. That
+	 * is 0.7% of 1,344 host-bearing signatures, but it is almost exactly the
+	 * streaming category, which is the highest-value one for parental
+	 * controls. Small surface, high stakes.
+	 *
+	 * OAF substring-matches these. Substring also matches
+	 * "evil-youtube.com", which is a look-alike hole we will not ship.
+	 * Requiring a whole label to EQUAL the token closes that hole but is too
+	 * strict: these services carry the token as a label prefix in their real
+	 * traffic domains, so equality silently drops
+	 *
+	 *     youtubei.googleapis.com   (label "youtubei"  -- InnerTube API)
+	 *     tiktokcdn.com             (label "tiktokcdn")
+	 *     tiktokv.com               (label "tiktokv")
+	 *
+	 * Matching a label that STARTS WITH the token keeps those and still
+	 * rejects "evil-youtube.com", whose label does not start with it.
+	 *
+	 * Known and accepted: "youtube.evil.com" still matches, because the
+	 * token IS a whole label there. That is inherent to a bare token and is
+	 * not solvable in the matcher; it over-blocks rather than under-blocks,
+	 * which is the safer direction for this feature. It is deliberate, not
+	 * an oversight. */
 	if (!memchr(pattern, '.', pl)) {
 		size_t start = 0;
 		for (size_t i = 0; i <= hl; i++) {
 			if (i == hl || host[i] == '.') {
-				if (i - start == pl &&
+				size_t label_len = i - start;
+				if (label_len >= pl &&
 				    strncasecmp(host + start, pattern, pl) == 0) {
 					if (kind)
 						*kind = MATCH_HOST_SUFFIX;

@@ -50,13 +50,26 @@ The per-packet path is fast: with long-lived flows the same board sustains
 flows per second at peak; a busy household with many IoT devices, some
 hundreds. 3,850/sec is roughly 10–40× that, on two of four cores.
 
-**NOT a pass on IPQ5018.** The BPI-R4 is the optimistic case — 4 cores and
-3.8 GB of RAM. The D50/IPQ5018 lane is materially weaker and has not been
-measured. The gate is per-SoC and is only cleared for filogic.
+**NOT a pass on IPQ5018.** The BPI-R4 is the optimistic case. Firmware review
+supplied the extrapolation; it is recorded here so the headline number is not
+quoted as a platform figure:
 
-Memory is worth noting separately: 35.9 MB resident for 20,000 concurrent
-flows is nothing on 3.8 GB, but it is ~28% of a 128 MB device. The bounded
-flow table required by ADR-020 decision 8 is not optional on small targets.
+| | BPI-R4 (measured) | D50 / IPQ5018 (extrapolated) |
+|---|---|---|
+| Cores × clock | 4 × ~1.8 GHz | 2 × ~1.0 GHz |
+| RAM | ~3.9 GB | 512 MB |
+| New-flow rate | **3,850/sec** | **~900-1,000/sec** |
+| 35.9 MB RSS as share of RAM | ~1% | ~7% |
+
+Roughly 4x less CPU and 8x less memory. ~900-1,000/sec is still likely ample
+for a household -- this board idles near 100 concurrent conntrack entries
+against a 65,536 table -- but it is arithmetic, not a measurement. The gate is
+per-SoC and is cleared only for filogic.
+
+**Not yet measured, and it matters:** burst behaviour. A device waking and
+opening 200 connections at once is 200 x 214 us = 43 ms if serialised, which is
+fine -- provided flow setup is not contending with the packet path. An average
+dominated by flow setup hides exactly that collision.
 
 ## What this measurement does not say
 

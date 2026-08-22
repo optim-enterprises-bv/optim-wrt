@@ -107,7 +107,51 @@ nDPI · OSY (OpenSync) · AE (aether, ours)
 | Bounded tables, counted refusals throughout | AE | `SHIPPED` |
 | Per-component consent, off by default | SEN EULA model | `BUILT` |
 
-## 9. Transport & platform reach
+## 9. Do we lose anything by rejecting walleye and netifyd?
+
+No. Those rejections are about **code and data**, not capability. Verified
+against nDPI 5.0 headers on this machine:
+
+| | nDPI 5.0 |
+|---|---|
+| Protocol IDs | **474** |
+| TLS | `server_names` (SNI), `advertised_alpns`, `negotiated_alpn`, `issuerDN`, `subjectDN` |
+| QUIC | `NDPI_PROTOCOL_QUIC`, `quic_*` |
+| Fingerprinting | `ja3_server`, `ja4_client` |
+| Risk flags | 27 |
+
+**walleye** is an `rts` bytecode VM plus a signature bundle. The VM is
+BSD-3-Clause and portable; only the bundle is unlicensable. What the bundle
+does — teach the VM to dissect protocols and emit `tls.sni` / `quic.sni` /
+`http.host` / `dns.*` — is exactly what nDPI already does, with a licence,
+more protocols, and native QUIC that walleye needs its bundle for. There is
+nothing to duplicate. Its one unique asset is Plume's `service.application`
+classifications; ours is the 1,347-signature database.
+
+**Netify**, capability by capability:
+
+| Netify | Ours |
+|---|---|
+| nDPI classification | same library, directly |
+| Encrypted-traffic metadata | nDPI TLS fields |
+| JA3/JA4 | nDPI |
+| Flow risks | nDPI |
+| 4-axis taxonomy, stable tags | `BUILT` |
+| Device identification *(paid)* | `argus`, ADR-009 |
+| **IP Sets / Flow Actions plugin *(paid)*** | **`SHIPPED`** |
+| Stats aggregator *(paid)* | `prometheus-engine` |
+| Message queue *(paid)* | USP / MQTT |
+| Network intelligence ML *(paid)* | `nemesis` |
+| **Signature updates *(paid)*** | **our own database** |
+
+Every capability, including the paid ones, is built or reachable from the same
+library. The paid parts are precisely the ones we replace with our own --
+renting their feed would reintroduce the vendor-decay risk ADR-017 names.
+
+What we genuinely lack is **assets, not architecture**: their curated
+signature breadth, and their cloud ML. Both are bought or grown over time.
+
+## 10. Transport & platform reach
 
 | Capability | Source | Status |
 |---|---|---|

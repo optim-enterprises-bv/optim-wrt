@@ -26,6 +26,23 @@
  *
  * The parsing this calls into is host-tested under adversarial input before it
  * ever runs here. See af_match.h for why that matters more than usual.
+ *
+ * SYMBOL LICENCE POSITION, measured rather than assumed. Every undefined symbol
+ * in the built module was checked against Module.symvers for 6.18.44/filogic.
+ * The result was two GPL-only symbols, and neither was the one anyone expected:
+ * not nf_send_reset (unused here), not conntrack (unused), but call_rcu and
+ * synchronize_rcu. Both were an implementation choice, not a requirement, and
+ * both are replaced by synchronize_net() which is plain EXPORT_SYMBOL.
+ *
+ * This module now references ZERO EXPORT_SYMBOL_GPL symbols.
+ *
+ * That removes the TECHNICAL barrier to a non-GPL declaration. It does not
+ * settle the LEGAL one: a module compiled against kernel headers and linked
+ * into the kernel's namespace is widely held to be a derivative work
+ * regardless of which symbols it touches, and MODULE_LICENSE is an assertion
+ * by the author that nothing adjudicates. The declaration below stays GPL
+ * until someone qualified says otherwise. What has changed is that the choice
+ * is now a legal question alone, with no technical obstacle behind it.
  */
 
 #include "af_match.h"
@@ -75,7 +92,6 @@ struct af_ruleset {
 	 * lookup is off the hot path for unmatched traffic. */
 	__u8 macs[AF_MAX_SUBJECTS][AF_MAC_LEN];
 	__u32 n_macs;
-	struct rcu_head rcu;
 };
 
 static struct af_ruleset __rcu *af_active;
@@ -105,11 +121,6 @@ static void af_ruleset_free(struct af_ruleset *rs)
 	kvfree(rs->any_slots);
 	kvfree(rs->per_slots);
 	kfree(rs);
-}
-
-static void af_ruleset_free_rcu(struct rcu_head *head)
-{
-	af_ruleset_free(container_of(head, struct af_ruleset, rcu));
 }
 
 static struct af_ruleset *af_ruleset_alloc(void)
@@ -432,8 +443,25 @@ static void af_handle_msg(struct sk_buff *skb)
 		/* Atomic swap. The packet path never observes a partial set. */
 		old = rcu_dereference_protected(af_active, true);
 		rcu_assign_pointer(af_active, new_rs);
-		if (old)
-			call_rcu(&old->rcu, af_ruleset_free_rcu);
+		if (old) {
+			/*
+			 * synchronize_net() rather than call_rcu().
+			 *
+			 * Both wait for readers to finish; only one of them is
+			 * reachable without a GPL-only symbol. call_rcu and
+			 * synchronize_rcu are EXPORT_SYMBOL_GPL, while
+			 * synchronize_net is plain EXPORT_SYMBOL -- verified
+			 * against Module.symvers for this exact kernel. Those
+			 * two were the ONLY GPL-only symbols this module used;
+			 * removing them leaves it with none.
+			 *
+			 * Blocking here is fine: commits arrive from the daemon
+			 * over netlink in process context and are rare. Nothing
+			 * on the packet path waits.
+			 */
+			synchronize_net();
+			af_ruleset_free(old);
+		}
 
 		spin_lock_irqsave(&af_stats_lock, flags);
 		af_stats.rules_loaded = new_rs->any.count + new_rs->per.count;
@@ -501,7 +529,7 @@ static void __exit af_exit(void)
 
 	rs = rcu_dereference_protected(af_active, true);
 	RCU_INIT_POINTER(af_active, NULL);
-	synchronize_rcu();
+	synchronize_net(); /* see the commit path: not synchronize_rcu */
 	af_ruleset_free(rs);
 
 	mutex_lock(&af_stage_lock);

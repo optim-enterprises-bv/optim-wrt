@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=10
+PKG_RELEASE:=11
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -16,7 +16,7 @@ PKG_RELEASE:=10
 # Aether platform; see LICENSE in that repository.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-sensord.git
-PKG_SOURCE_VERSION:=7c4923fd2636894a91ffd9765da65ff67ee2a139
+PKG_SOURCE_VERSION:=6650c96bae440d131b62894d370dfa4a72c6be1a
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
@@ -154,7 +154,7 @@ define Package/aether-sensord/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/etc/init.d/aether-sensord $(1)/etc/init.d/aether-sensord
 
-	$(INSTALL_DIR) $(1)/usr/share/nftables.d/table-prepend/inet/fw4
+	$(INSTALL_DIR) $(1)/usr/share/nftables.d/table-pre
 endef
 
 define Package/aether-sensord/postinst

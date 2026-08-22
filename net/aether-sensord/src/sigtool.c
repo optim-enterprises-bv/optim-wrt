@@ -34,8 +34,9 @@ static int usage(const char *argv0)
 	fprintf(stderr,
 	        "usage: %s [-d DB] stats\n"
 	        "       %s [-d DB] lookup <tag>\n"
-	        "       %s [-d DB] classify <host> [port]\n",
-	        argv0, argv0, argv0);
+	        "       %s [-d DB] classify <host> [port]\n"
+	        "       %s [-d DB] ambiguity\n",
+	        argv0, argv0, argv0, argv0);
 	return 2;
 }
 
@@ -126,6 +127,67 @@ int main(int argc, char **argv)
 				}
 			}
 		}
+	} else if (strcmp(cmd, "ambiguity") == 0) {
+		/* Which host patterns are claimed by more than one application?
+		 *
+		 * Whichever rule a linear scan reaches first wins, so an
+		 * ambiguous pattern gives an arbitrary answer. In the shipped
+		 * database en.wikipedia.org is claimed by six apps, one of them
+		 * in class 31 "Malware" -- which in a parental-controls report
+		 * means telling a parent their child visited a malware site for
+		 * reading Wikipedia.
+		 *
+		 * Some ambiguity is legitimate (aws.amazon.com really does serve
+		 * several AWS products) and some is an authoring error. This
+		 * tool does not judge; it lists them so a human can. */
+		int groups = 0, involved = 0;
+		for (size_t k = 0; k < db.n_rules; k++) {
+			if (db.rules[k].host[0] == '\0')
+				continue;
+			/* Only report the first occurrence of each pattern. */
+			bool first = true;
+			for (size_t j = 0; j < k; j++) {
+				if (db.rules[j].host[0] &&
+				    strcasecmp(db.rules[j].host, db.rules[k].host) == 0) {
+					first = false;
+					break;
+				}
+			}
+			if (!first)
+				continue;
+
+			size_t apps[16];
+			int n = 0;
+			for (size_t j = 0; j < db.n_rules; j++) {
+				if (db.rules[j].host[0] == '\0')
+					continue;
+				if (strcasecmp(db.rules[j].host, db.rules[k].host) != 0)
+					continue;
+				bool seen = false;
+				for (int q = 0; q < n; q++)
+					if (apps[q] == db.rules[j].app_index)
+						seen = true;
+				if (!seen && n < 16)
+					apps[n++] = db.rules[j].app_index;
+			}
+			if (n < 2)
+				continue;
+
+			groups++;
+			involved += n;
+			printf("%s claimed by %d apps:\n", db.rules[k].host, n);
+			for (int q = 0; q < n; q++) {
+				const struct sig_app *a =
+				    sig_db_app_at(&db, apps[q]);
+				if (a)
+					printf("    %-24s id=%-6u class=%u\n",
+					       a->tag, a->id, a->db_class);
+			}
+		}
+		printf("\n%d ambiguous host patterns, %d signatures involved\n",
+		       groups, involved);
+		if (groups)
+			rc = 1;
 	} else if (strcmp(cmd, "classify") == 0) {
 		if (i >= argc) {
 			rc = usage(argv[0]);
@@ -141,6 +203,15 @@ int main(int argc, char **argv)
 				printf("%s:%u -> tag=%s name=%s class=%u via=%s\n",
 				       host, port, m.app->tag, m.app->name,
 				       m.app->db_class, match_kind_str(m.kind));
+				/* An arbitrary answer must not look confident. */
+				if (m.ambiguous_apps > 1) {
+					printf("  AMBIGUOUS: %u applications claim this "
+					       "pattern equally; the one above is whichever\n"
+					       "  the scan reached first. Run `ambiguity` "
+					       "to see them.\n",
+					       m.ambiguous_apps);
+					rc = 2;
+				}
 			}
 		}
 	} else {

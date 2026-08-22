@@ -90,6 +90,20 @@ Read before quoting the headline number.
   exactly-countable load, not field traffic, and no classification result from
   it is evidence that anything works in production (ADR-003). The realism leg
   of the gate still needs a capture of real traffic.
+- **The measured figure is TLS/SNI flows, and at a ~25% miss rate.** Review
+  ran the harness's 16 hostnames against the real 1,347-signature database:
+  12 hit, 4 miss. Real subscriber traffic is dominated by misses -- most
+  hostnames a household visits are in no signature database -- so a realistic
+  mix is nearer 60-90%. A miss is the expensive case in a linear scan (it
+  walks every signature and fails), so **214 us/flow is a floor, not a typical
+  value**, plausibly by 2-3x. Two fixes for the next run: pad the SNI list
+  with unmatched long-tail hostnames to a realistic miss rate, and randomise
+  the order rather than cycling `i % 16`, which is perfectly
+  branch-predictable over 20,000 flows.
+- **QUIC is not measured at all.** The harness is TLS-with-SNI only. QUIC on
+  UDP/443 is a large and growing share of real traffic and carries no visible
+  SNI -- it is why OAF ships `disable_quic`. Quote the figure as "3,850
+  TLS/SNI flows/sec", never as "3,850 flows/sec".
 - **It says nothing about hardware-offload bypass.** That is a separate gate
   item and cannot be measured by replay — offload is bypassed precisely
   because packets never reach the classifier, which a file replay cannot

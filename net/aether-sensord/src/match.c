@@ -124,9 +124,12 @@ static int specificity(enum match_kind k)
 struct match_result match_flow(const struct sig_db *db, const char *host,
                                uint8_t proto, uint16_t dport)
 {
-	struct match_result best = { MATCH_NONE, NULL, 0 };
+	struct match_result best = { MATCH_NONE, NULL, 0, 0 };
 	int best_score = 0;
 	size_t best_len = 0;
+	/* Distinct apps tied at the winning (score, pattern-length). */
+	const struct sig_app *tied[8];
+	uint8_t n_tied = 0;
 
 	if (!db)
 		return best;
@@ -166,16 +169,40 @@ struct match_result match_flow(const struct sig_db *db, const char *host,
 		}
 
 		int score = specificity(k);
+		const struct sig_app *app = sig_db_app_at(db, r->app_index);
+
 		if (score > best_score || (score == best_score && plen > best_len)) {
+			/* Strictly better: this is now the only candidate. */
 			best_score = score;
 			best_len = plen;
 			best.kind = k;
 			best.rule_index = (uint16_t)i;
-			best.app = sig_db_app_at(db, r->app_index);
+			best.app = app;
+			n_tied = 0;
+			if (app && n_tied < (uint8_t)(sizeof(tied) / sizeof(tied[0])))
+				tied[n_tied++] = app;
+		} else if (score == best_score && plen == best_len && app &&
+		           best.app) {
+			/* Equally specific. Record it only if it is a DIFFERENT
+			 * application -- one app with several rules for the same
+			 * pattern is not ambiguity. */
+			bool seen = false;
+			for (uint8_t j = 0; j < n_tied; j++) {
+				if (tied[j] == app) {
+					seen = true;
+					break;
+				}
+			}
+			if (!seen && n_tied < (uint8_t)(sizeof(tied) / sizeof(tied[0])))
+				tied[n_tied++] = app;
 		}
 	}
 
-	if (!best.app)
+	if (!best.app) {
 		best.kind = MATCH_NONE;
+		best.ambiguous_apps = 0;
+	} else {
+		best.ambiguous_apps = n_tied;
+	}
 	return best;
 }

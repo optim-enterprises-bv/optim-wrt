@@ -38,6 +38,24 @@ struct match_result {
 	enum match_kind kind;
 	const struct sig_app *app; /* NULL when kind == MATCH_NONE */
 	uint16_t rule_index;
+	/*
+	 * How many DISTINCT applications matched at the winning specificity.
+	 *
+	 * >1 means the database is ambiguous for this host and the app chosen
+	 * is arbitrary — whichever rule the scan reached first. That is not
+	 * hypothetical: 30 host patterns in the shipped database are claimed by
+	 * more than one application (74 signatures, ~6%). `en.wikipedia.org` is
+	 * claimed by six, one of which is `31001 Conduit-Toolbar` in class 31,
+	 * "Malware".
+	 *
+	 * Some of that is legitimate — aws.amazon.com genuinely serves several
+	 * AWS products — and some is an authoring error. The matcher cannot
+	 * tell them apart, so it does not try. It reports the ambiguity and
+	 * lets the caller decide, because silently telling a parent their child
+	 * visited a malware site for reading Wikipedia is the failure mode
+	 * this field exists to make impossible.
+	 */
+	uint8_t ambiguous_apps;
 };
 
 const char *match_kind_str(enum match_kind k);

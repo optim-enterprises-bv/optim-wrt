@@ -64,7 +64,14 @@ static void test_private_ranges_refused(void)
 	                       "172.31.255.1", "127.0.0.1",  "169.254.1.1",
 	                       "100.64.0.1",  "203.0.113.5", "198.51.100.9",
 	                       "192.0.2.4",   "224.0.0.1",   "::1",
-	                       "fe80::1",     "fd00::1",     NULL };
+	                       "fe80::1",     "fd00::1",
+	                       /* v6 gaps found in review: the two branches must
+	                        * refuse the same classes of address. */
+	                       "::",          /* unspecified -- was falling through */
+	                       "2001:db8::1", /* documentation */
+	                       "ff02::1",     /* multicast */
+	                       "::ffff:10.1.2.3", /* RFC1918 in a v6 coat */
+	                       NULL };
 	for (int i = 0; priv[i]; i++) {
 		struct obs_addr a = addr(priv[i]);
 		CHECK(obs_addr_is_private(&a), priv[i]);
@@ -73,7 +80,11 @@ static void test_private_ranges_refused(void)
 	const char *pub[] = { "45.155.205.233", "1.19.0.1", "8.8.8.8",
 	                      "172.32.0.1", /* just outside RFC 1918 */
 	                      "100.128.0.1", /* just outside CGNAT */
-	                      "2001:db8::1", NULL };
+	                      /* A genuinely routable v6 address. 2001:db8::1 used
+	                       * to sit here and was wrong -- it is the RFC 3849
+	                       * documentation prefix, and is now refused. */
+	                      "2606:4700::1111",
+	                      "2a00:1450:4001::1", NULL };
 	for (int i = 0; pub[i]; i++) {
 		struct obs_addr a = addr(pub[i]);
 		CHECK(!obs_addr_is_private(&a), pub[i]);

@@ -95,13 +95,37 @@ bool obs_addr_is_private(const struct obs_addr *a)
 
 	if (a->len == 16) {
 		const uint8_t *b = a->bytes;
-		/* ::1 */
 		static const uint8_t loopback[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1 };
-		if (memcmp(b, loopback, 16) == 0)
+		static const uint8_t unspecified[16] = { 0 };
+
+		/* :: -- the v6 counterpart of the 0.0.0.0/8 guard above. Without
+		 * this, all-zeros fails the loopback memcmp on the last byte and
+		 * falls through as PUBLIC. The two branches of this function must
+		 * refuse the same classes of address or the asymmetry reads as
+		 * deliberate later. */
+		if (memcmp(b, unspecified, 16) == 0)
 			return true;
+		if (memcmp(b, loopback, 16) == 0)           return true; /* ::1 */
 		if ((b[0] & 0xfe) == 0xfc)                  return true; /* fc00::/7 */
 		if (b[0] == 0xfe && (b[1] & 0xc0) == 0x80)  return true; /* fe80::/10 */
 		if (b[0] == 0xff)                           return true; /* multicast */
+
+		/* 2001:db8::/32 documentation, for symmetry with the v4 TEST-NETs. */
+		if (b[0] == 0x20 && b[1] == 0x01 && b[2] == 0x0d && b[3] == 0xb8)
+			return true;
+
+		/* ::ffff:0:0/96 IPv4-mapped. Believed unreachable from a wire
+		 * header -- mapped addresses are a sockets-API construct and
+		 * obs_decode builds from RFC byte offsets -- but an RFC1918
+		 * address wearing a v6 coat must not read as public if it ever
+		 * does arrive. Defensive, not a known live path. */
+		static const uint8_t v4mapped[12] = { 0,0,0,0,0,0,0,0,0,0,0xff,0xff };
+		if (memcmp(b, v4mapped, 12) == 0) {
+			struct obs_addr inner;
+			if (obs_addr_from_v4(&inner, b + 12))
+				return obs_addr_is_private(&inner);
+			return true;
+		}
 		return false;
 	}
 

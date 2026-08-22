@@ -13,8 +13,17 @@
  * WHAT IS NOT: capture, nDPI dissection and classification. The signature
  * database and matcher are loaded and reported here so the load can be
  * confirmed on-device, but nothing feeds them traffic yet, so no application
- * is classified and no app policy is enforced. `oaf.ko` continues to do app
- * filtering (ADR-020 decision 2). This daemon does not touch it.
+ * is classified and no app policy is enforced.
+ *
+ * `oaf.ko` continues to do app filtering, and IN THIS BUILD this daemon does
+ * not talk to it. That is a statement about how far the work has got, not the
+ * end state: ADR-020 decision 1 has aether-sensord replacing `oafd`, and
+ * `oafd`'s entire job is driving `oaf.ko` over netlink id 29. So when the app
+ * path is wired, this daemon WILL drive the module -- that is what replacing
+ * the daemon means. What stays untouched is the kernel module itself, which
+ * is consumed from upstream v6.1.8 rather than forked or renamed (ADR-020
+ * decision 2): it is free, current, and does the in-kernel first-packet drop
+ * that a userspace classifier cannot.
  *
  * That split is stated plainly rather than implied, because a daemon that
  * starts cleanly while enforcing nothing is the exact failure this project

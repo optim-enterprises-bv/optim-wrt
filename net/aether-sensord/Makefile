@@ -101,8 +101,6 @@ echo "means nft accepted the batch but the set did not receive it."
 echo ""
 endef
 
-$(eval $(call BuildPackage,aether-sensord))
-
 define Package/aether-sigtool
   SECTION:=net
   CATEGORY:=Network
@@ -169,4 +167,10 @@ define Package/aether-sigtool/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/aether-sigtool $(1)/usr/bin/aether-sigtool
 endef
 
+# Both evals come last, AFTER Build/Prepare and Build/Compile above.
+# BuildPackage expands the build rules at the point it is called, so a package
+# evaluated before Build/Compile exists silently inherits the default autotools
+# rule -- which runs ./configure and `make`, finds neither, and fails with an
+# error that says nothing about the cause. That cost a build cycle here.
+$(eval $(call BuildPackage,aether-sensord))
 $(eval $(call BuildPackage,aether-sigtool))

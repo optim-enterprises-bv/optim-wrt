@@ -19,7 +19,7 @@ nDPI · OSY (OpenSync) · AE (aether, ours)
 | Capability | Source | Status |
 |---|---|---|
 | TLS SNI / HTTP Host extraction | OAF, nDPI | `PLANNED` |
-| ~300 protocol dissectors | nDPI | `PLANNED` |
+|  **474** protocol dissectors | nDPI | `PLANNED` |
 | **QUIC ClientHello decryption** | nDPI | `PLANNED` — retires `disable_quic` |
 | **1,347-signature application database** | **AE** | `SHIPPED` — 15× upstream OAF's 87 |
 | Label-prefix name matching | AE | `BUILT` — recovers `youtubei.googleapis.com`, rejects `evil-youtube.com` |

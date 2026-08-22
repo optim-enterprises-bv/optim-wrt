@@ -23,6 +23,86 @@ PKG_BUILD_PARALLEL:=1
 
 include $(INCLUDE_DIR)/package.mk
 
+define Package/aether-sensord
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=Firewall
+  TITLE:=Device-side security service (reputation enforcement)
+  URL:=https://github.com/optim-enterprises-bv/optim-wrt
+  DEPENDS:=+libc +nftables-json
+endef
+
+define Package/aether-sensord/description
+  Applies the attacker-reputation set published by the aether controller
+  (ADR-019) to nftables, and CONFIRMS it took effect.
+
+  Feed messages arrive as files in a spool directory, delivered by ac-client,
+  which already holds the device's mTLS identity. This daemon opens no network
+  socket and holds no credential.
+
+  The delta/serial/resync protocol means a missed update is recoverable: a gap
+  leaves the set untouched and demands a snapshot, rather than applying across
+  the hole and diverging from the controller invisibly from both ends.
+
+  Every apply is followed by reading the kernel's own view of the set back.
+  `nft -f` returning 0 means nft parsed a file; it does not mean the set exists
+  or that a packet will die. Those are reported separately.
+
+  Set declarations are installed as an fw4 include rather than created with
+  `nft add set`, because fw4 rebuilds its ruleset on reload and would destroy
+  an imperatively-created set. Elements carry a timeout, so reputation decays
+  in the kernel as well as in the scorer.
+
+  NOT IN THIS BUILD: capture, nDPI dissection, application classification and
+  app policy enforcement. The signature database is loaded and reported so the
+  load is confirmable on-device, but nothing feeds it traffic. Application
+  filtering continues to be done by oaf.ko, which this daemon does not touch.
+endef
+
+define Package/aether-sensord/conffiles
+/etc/config/aether-sensord
+endef
+
+define Package/aether-sensord/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/aether-sensord $(1)/usr/sbin/aether-sensord
+
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_CONF) ./files/etc/config/aether-sensord $(1)/etc/config/aether-sensord
+
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/etc/init.d/aether-sensord $(1)/etc/init.d/aether-sensord
+
+	$(INSTALL_DIR) $(1)/usr/share/nftables.d/table-pre/inet/fw4
+endef
+
+define Package/aether-sensord/postinst
+#!/bin/sh
+set -e
+
+echo ""
+echo "aether-sensord installed."
+echo ""
+echo "Reputation enforcement is enabled by default: it blocks inbound traffic"
+echo "from addresses the controller scores as hostile, and collects nothing"
+echo "about the subscriber."
+echo ""
+echo "  /etc/init.d/aether-sensord enable"
+echo "  /etc/init.d/aether-sensord start"
+echo "  fw4 reload      # once, so the declared sets are created"
+echo ""
+echo "Confirm it is actually ENFORCING, not merely running -- a daemon that"
+echo "starts cleanly while enforcing nothing is this project's known failure:"
+echo "   logread -e aether-sensord"
+echo "   nft list set inet fw4 aether_rep4"
+echo ""
+echo "The log line to look for is 'applied and verified'. 'NOT enforced'"
+echo "means nft accepted the batch but the set did not receive it."
+echo ""
+endef
+
+$(eval $(call BuildPackage,aether-sensord))
+
 define Package/aether-sigtool
   SECTION:=net
   CATEGORY:=Network
@@ -70,6 +150,17 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/sigtool.c \
 		$(PKG_BUILD_DIR)/sigdb.c \
 		$(PKG_BUILD_DIR)/match.c \
+		$(TARGET_LDFLAGS)
+	$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_CPPFLAGS) \
+		-std=gnu11 -Wall -Wextra \
+		-o $(PKG_BUILD_DIR)/aether-sensord \
+		$(PKG_BUILD_DIR)/sensord.c \
+		$(PKG_BUILD_DIR)/sigdb.c \
+		$(PKG_BUILD_DIR)/match.c \
+		$(PKG_BUILD_DIR)/policy.c \
+		$(PKG_BUILD_DIR)/nft.c \
+		$(PKG_BUILD_DIR)/feed.c \
+		$(PKG_BUILD_DIR)/apply.c \
 		$(TARGET_LDFLAGS)
 endef
 

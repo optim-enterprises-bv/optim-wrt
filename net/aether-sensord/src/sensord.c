@@ -35,6 +35,7 @@
  * thing to get wrong.
  */
 
+#include "afpush.h"
 #include "apply.h"
 #include "feed.h"
 #include "match.h"
@@ -82,6 +83,11 @@ struct config {
 	/* Overridable so the whole apply+verify path can be exercised against a
 	 * stub without root, a device, or a real ruleset. */
 	const char *nft_path;
+	/* Push compiled app rules to the aether-af kernel module. Off by
+	 * default: the module may not be loaded, and a daemon that fails to
+	 * start because an optional consumer is absent is worse than one that
+	 * says so and carries on. */
+	int push_af;
 };
 
 /*
@@ -273,7 +279,8 @@ static void usage(const char *a0)
 {
 	fprintf(stderr,
 	        "usage: %s [-d db] [-s spool] [-n nft-include] [-i interval]\n"
-	        "          [-T set-timeout-sec] [-N nft-path] [-f] [-1]\n",
+	        "          [-T set-timeout-sec] [-N nft-path] [-k] [-f] [-1]\n"
+	        "  -k  push compiled app rules to the aether-af kernel module\n",
 	        a0);
 }
 
@@ -288,10 +295,11 @@ int main(int argc, char **argv)
 		.foreground = 0,
 		.once = 0,
 		.nft_path = NULL,
+		.push_af = 0,
 	};
 
 	int opt;
-	while ((opt = getopt(argc, argv, "d:s:n:i:T:N:f1h")) != -1) {
+	while ((opt = getopt(argc, argv, "d:s:n:i:T:N:f1kh")) != -1) {
 		switch (opt) {
 		case 'd': cfg.db_path = optarg; break;
 		case 's': cfg.spool_dir = optarg; break;
@@ -299,6 +307,7 @@ int main(int argc, char **argv)
 		case 'i': cfg.interval = (unsigned)strtoul(optarg, NULL, 10); break;
 		case 'T': cfg.set_timeout = (uint32_t)strtoul(optarg, NULL, 10); break;
 		case 'N': cfg.nft_path = optarg; break;
+		case 'k': cfg.push_af = 1; break;
 		case 'f': cfg.foreground = 1; break;
 		case '1': cfg.once = 1; break;
 		default: usage(argv[0]); return 2;
@@ -338,6 +347,84 @@ int main(int argc, char **argv)
 			syslog(LOG_ERR,
 			       "SIGNATURES REFUSED FOR CAPACITY -- coverage is reduced "
 			       "and this is not a warning to ignore");
+	}
+
+	/*
+	 * Push app rules to the kernel module, if asked and if it is there.
+	 *
+	 * This is the boundary in practice: everything above stays here in
+	 * BSD userspace, and what crosses is a list of hashes. The module
+	 * cannot reconstruct a signature from one.
+	 */
+	if (cfg.push_af) {
+		struct afpush_conn afc;
+
+		if (!afpush_open(&afc)) {
+			syslog(LOG_WARNING,
+			       "aether-af module not reachable on netlink unit %d "
+			       "-- app rules NOT pushed. Reputation enforcement is "
+			       "unaffected.",
+			       AFPUSH_NETLINK_UNIT);
+		} else {
+			static uint64_t hashes[AFPUSH_MAX_MSG];
+			struct pol_db pol;
+			size_t collisions = 0;
+			long nh;
+
+			/* No policy source is wired yet, so this compiles an
+			 * empty set and pushes an empty commit. That is
+			 * deliberate and honest: it proves the transport end to
+			 * end without pretending rules exist. */
+			pol_db_init(&pol);
+			nh = afpush_compile(&pol, &sigs, hashes,
+			                    sizeof(hashes) / sizeof(hashes[0]),
+			                    &collisions);
+			if (nh < 0) {
+				syslog(LOG_ERR, "rule compilation failed");
+			} else {
+				uint8_t msg[AFPUSH_MAX_MSG];
+				size_t n, written = 0;
+
+				n = afpush_build_hello(msg, sizeof(msg));
+				if (n)
+					afpush_send(&afc, msg, n);
+
+				n = afpush_build_simple(msg, sizeof(msg),
+				                        AFPUSH_RULES_BEGIN);
+				if (n)
+					afpush_send(&afc, msg, n);
+
+				if (nh > 0) {
+					n = afpush_build_rules(msg, sizeof(msg),
+					                       hashes, NULL, NULL,
+					                       (size_t)nh, &written);
+					if (n)
+						afpush_send(&afc, msg, n);
+					/* Report what ACTUALLY went, not what was
+					 * asked for -- a short batch committed as
+					 * if whole enforces less than the
+					 * controller believes. */
+					if (written < (size_t)nh)
+						syslog(LOG_ERR,
+						       "only %zu of %ld app rules fit "
+						       "one batch; batching not yet "
+						       "implemented, rule set is SHORT",
+						       written, nh);
+				}
+
+				n = afpush_build_simple(msg, sizeof(msg),
+				                        AFPUSH_RULES_COMMIT);
+				if (n)
+					afpush_send(&afc, msg, n);
+
+				syslog(LOG_INFO,
+				       "aether-af: pushed %zu of %ld app rule hashes "
+				       "(%zu duplicate patterns collapsed)",
+				       written, nh, collisions);
+			}
+			pol_db_free(&pol);
+			afpush_close(&afc);
+		}
 	}
 
 	struct nft_target target = { "inet", "fw4", "aether_rep4", "aether_rep6" };

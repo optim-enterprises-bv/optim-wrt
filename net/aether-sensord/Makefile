@@ -159,6 +159,7 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/nft.c \
 		$(PKG_BUILD_DIR)/feed.c \
 		$(PKG_BUILD_DIR)/apply.c \
+		$(PKG_BUILD_DIR)/afpush.c \
 		$(TARGET_LDFLAGS)
 endef
 

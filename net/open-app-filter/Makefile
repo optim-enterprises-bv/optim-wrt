@@ -33,7 +33,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=appfilter
 PKG_VERSION:=6.1.8
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/destan19/OpenAppFilter.git
@@ -105,6 +105,17 @@ define Package/appfilter/install
 	# Moving this line above the wildcard silently reverts coverage to upstream's
 	# and nothing else changes — the build succeeds and the filter still runs.
 	$(INSTALL_DATA) ./files/feature_en.cfg $(1)/etc/appfilter/feature_en.cfg
+	#
+	# ...and as feature.cfg, which is the file the engine actually opens.
+	# files/appfilter.init sets FEATURE_FILE=/tmp/feature.cfg and symlinks it
+	# to /etc/appfilter/feature.cfg; nothing in the load path mentions
+	# feature_en.cfg. Installing the curated database only under that name
+	# left the engine on upstream's 228 signatures, silently.
+	#
+	# Requires patches/100-bound-app-name-table.patch: upstream's app-name
+	# table is a fixed 1024 entries filled with no bound check, so any
+	# database past ~1024 rows corrupts memory and kills the daemon.
+	$(INSTALL_DATA) ./files/feature_en.cfg $(1)/etc/appfilter/feature.cfg
 
 	# Guards that must be on for filtering to observe traffic on an accelerated
 	# datapath. See the header of this file for why upstream's defaults are unsafe.

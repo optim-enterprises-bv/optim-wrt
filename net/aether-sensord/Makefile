@@ -16,7 +16,7 @@ PKG_RELEASE:=18
 # Aether platform; see LICENSE in that repository.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-sensord.git
-PKG_SOURCE_VERSION:=481c39a4e6eb15e1b2f233db73d18ce24c588835
+PKG_SOURCE_VERSION:=7d787b97b731dbfbd78cb5eef7779e3bbcf7ccd5
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)

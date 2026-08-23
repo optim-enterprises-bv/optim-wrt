@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=16
+PKG_RELEASE:=17
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -16,7 +16,7 @@ PKG_RELEASE:=16
 # Aether platform; see LICENSE in that repository.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-sensord.git
-PKG_SOURCE_VERSION:=6952bbca5c7291a2202893715bb0345150c50b10
+PKG_SOURCE_VERSION:=481c39a4e6eb15e1b2f233db73d18ce24c588835
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)

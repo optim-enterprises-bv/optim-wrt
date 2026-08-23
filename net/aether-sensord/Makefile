@@ -250,6 +250,7 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/src/canary.c \
 		$(PKG_BUILD_DIR)/src/nflog_raw.c \
 		$(PKG_BUILD_DIR)/src/observe.c \
+		$(PKG_BUILD_DIR)/src/flowlog.c \
 		$(TARGET_LDFLAGS) -lndpi -lm -lpthread
 endef
 

@@ -26,6 +26,29 @@ config aether-sensord 'main'
 	# stale set enforcing forever. Matches the scorer's 7-day half-life.
 	option set_timeout '604800'
 
+	# --- Proof of enforcement ------------------------------------------
+	#
+	# Seconds between canary runs; 0 disables it. On by default and NOT
+	# consent-gated: the canary puts a documentation address (192.0.2.199)
+	# in the live set, sends one packet at it, and requires the firewall to
+	# refuse it. It collects nothing about the subscriber.
+	#
+	# Turning this off means nothing will ever notice that blocking has
+	# stopped working. On 2026-08-22 this daemon logged "Reputation
+	# enforcement is live" against nftables sets that did not exist.
+	option canary_interval '3600'
+
+	# Verdicts are written here for the uplink to ship. Deliberately not the
+	# sensing spool: that one is created only when sensing is enabled, and
+	# it is consent-gated because it carries attacker addresses.
+	option canary_spool '/var/spool/aether-sensord/canary'
+
+	# The identity the controller knows this device by. Leave empty unless
+	# this device knows it: the uplink has one, and the daemon omits the
+	# field rather than sending an empty serial that would key every
+	# unidentified device to the same row.
+	option serial ''
+
 # --- Firewall-drop sensing (formerly the aether-fwlogs package) ------------
 #
 # SEPARATE CONSENT, NOT A SUB-OPTION OF `enabled` ABOVE.

@@ -181,6 +181,7 @@ start_service() {
 	local sense_enabled sense_group sense_capacity sense_scan_ports sense_zone
 	local sense_spool sense_max_batches
 	local dpi_enabled dpi_group dpi_max_flows dpi_addr_timeout offload_policy
+	local canary_interval canary_spool serial
 
 	config_load aether-sensord
 	config_get_bool enabled main enabled 1
@@ -205,6 +206,17 @@ start_service() {
 	config_get dpi_addr_timeout  main dpi_addr_timeout  3600
 	config_get offload_policy    main offload_policy    warn
 
+	# Proof of enforcement. Not consent-gated: the canary sends one packet to
+	# a documentation address and reports whether the firewall refused it. It
+	# collects nothing about the subscriber, which is why it is on by default
+	# and why its spool is separate from the sensing one.
+	config_get canary_interval main canary_interval 3600
+	config_get canary_spool    main canary_spool    /var/spool/aether-sensord/canary
+	# The identity the controller knows this device by. Empty is fine: the
+	# uplink fills it in, and the daemon omits the field rather than sending
+	# an empty one.
+	config_get serial          main serial          ""
+
 	[ "$enabled" -eq 0 ] && {
 		logger -t aether-sensord "disabled in /etc/config/aether-sensord"
 		return 0
@@ -216,7 +228,17 @@ start_service() {
 	mkdir -p /usr/share/nftables.d/table-pre
 
 	set -- "$PROG" -d "$db_path" -s "$spool_dir" -i "$interval" \
-		-T "$set_timeout" -f
+		-T "$set_timeout" -C "$canary_interval" -f
+
+	if [ "$canary_interval" -gt 0 ]; then
+		# Created here as well as in the daemon: a verdict that cannot be
+		# written leaves the device looking silent to the controller, and
+		# silent is its alarm state.
+		mkdir -p "$canary_spool"
+		chmod 0750 "$canary_spool"
+		set -- "$@" -R "$canary_spool"
+	fi
+	[ -n "$serial" ] && set -- "$@" -I "$serial"
 
 	if [ "$sense_enabled" -eq 1 ]; then
 		install_sense_rule "$sense_group" "$sense_zone"

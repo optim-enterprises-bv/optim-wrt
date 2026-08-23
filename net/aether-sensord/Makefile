@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aether-sensord
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=17
+PKG_RELEASE:=18
 
 # Source lives in its own repository, pinned rather than tracked: a moving
 # branch would change what a tagged firmware contains without changing the
@@ -247,6 +247,7 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/src/appblock.c \
 		$(PKG_BUILD_DIR)/src/neigh.c \
 		$(PKG_BUILD_DIR)/src/offload.c \
+		$(PKG_BUILD_DIR)/src/canary.c \
 		$(PKG_BUILD_DIR)/src/nflog_raw.c \
 		$(PKG_BUILD_DIR)/src/observe.c \
 		$(TARGET_LDFLAGS) -lndpi -lm -lpthread

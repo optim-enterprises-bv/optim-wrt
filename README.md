@@ -164,8 +164,11 @@ Raise it only if you know every idle timeout on your path.
    your email. Your device list will be empty at this point — that is expected,
    and claiming is what fills it.
 
-4. **Start a claim.** The portal UI does not have a claim button yet, so this
-   step is an API call today. Log in and claim:
+4. **Start a claim.** In the portal, open **My Network** and press **Claim a
+   device**, then follow the prompts — that is the whole flow.
+
+   The rest of this section is the same two steps over the API, for scripting
+   or bulk onboarding:
 
    ```sh
    BASE=https://gw.aether-io.com

@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ac-client
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=12
+PKG_RELEASE:=15
 
 # Track optim-enterprises-bv/ac-client over HTTPS at a pinned commit. The
 # in-repo package Makefile fetches over an SSH remote
@@ -17,7 +17,7 @@ PKG_RELEASE:=12
 # reproducible. Feed builds use HTTPS and an immutable commit.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/ac-client.git
-PKG_SOURCE_VERSION:=9d0980ee9cf52f300179e595b5625ad62eaead98
+PKG_SOURCE_VERSION:=92f9b5151e5bff050df80225295575c15806e62b
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
@@ -49,7 +49,10 @@ define Package/ac-client
   # DEFAULT_PACKAGES but is declared explicitly because the default ca_file
   # points into it -- without it the agent fails at connect time, not at build
   # time.
-  DEPENDS:=$(RUST_ARCH_DEPENDS) +libc +ca-bundle
+  # +iw and +tc are runtime dependencies of the telemetry, not the binary:
+  # without them the radio survey and queue statistics report nothing, and the
+  # controller's RF and bufferbloat views go quietly empty.
+  DEPENDS:=$(RUST_ARCH_DEPENDS) +libc +ca-bundle +iw +tc
 endef
 
 define Package/ac-client/description

@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ac-client
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=16
+PKG_RELEASE:=17
 
 # Track optim-enterprises-bv/ac-client over HTTPS at a pinned commit. The
 # in-repo package Makefile fetches over an SSH remote
@@ -17,7 +17,7 @@ PKG_RELEASE:=16
 # reproducible. Feed builds use HTTPS and an immutable commit.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/ac-client.git
-PKG_SOURCE_VERSION:=9c2a23f37a19fba614a09286e5fa8ba55bf1d18d
+PKG_SOURCE_VERSION:=8219470705269759dbb64d2a6213822db995ebf9
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
@@ -167,9 +167,18 @@ echo "   uci set optimacs.agent.server_cn='<controller>'"
 echo "   uci set optimacs.agent.ca_file='/etc/apclient/init/ca.crt'"
 echo "   uci commit optimacs"
 echo ""
-echo "  WARNING: the bootstrap certificates in /etc/apclient/init/ are"
-echo "  public -- they are shipped in this package. Replace them for any"
-echo "  deployment that authenticates clients by certificate."
+echo "  The bootstrap certificates in /etc/apclient/init/ are PUBLIC --"
+echo "  they ship in this package, identical on every install. They attest"
+echo "  'genuine Optim firmware' and never 'I am device X'."
+echo ""
+echo "  That is why enrolment binds on FIRST USE (ADR-026): the first"
+echo "  device to enrol a serial keeps it, and a later request for the same"
+echo "  serial is refused. Losing that race is loud -- the real device is"
+echo "  refused rather than silently sharing an identity."
+echo ""
+echo "  ac-client now enrols itself on first boot and replaces these with a"
+echo "  per-device certificate in /etc/apclient/certs/, carrying the USP"
+echo "  Endpoint ID in a subjectAltName as TR-369 R-SEC.0a requires."
 echo ""
 echo "View current config:  uci show optimacs.agent"
 echo ""

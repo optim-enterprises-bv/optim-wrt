@@ -10,7 +10,7 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=aether-af
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_MAINTAINER:=Optim Enterprises BV
 PKG_LICENSE:=GPL-2.0-only
@@ -22,7 +22,7 @@ PKG_LICENSE_FILES:=LICENSE
 # would change what a tagged firmware contains without changing the feed.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/aether-af.git
-PKG_SOURCE_VERSION:=d61e9a2d413c10ee0b69b3164e06c42bc4af1c61
+PKG_SOURCE_VERSION:=186f7b699e5a5aab8ed12ea3129c6b325192db92
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)

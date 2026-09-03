@@ -100,6 +100,11 @@ config aether-sensord 'main'
 # ClientHello or a QUIC Initial IS payload, and identifying it means copying it
 # into userspace. That is a materially different promise to the subscriber, so
 # it is its own switch and defaults to off.
+	# Compile /etc/config/aether-policy into host-pattern hashes and push them
+	# to the aether-af module. Off means app rules parse, report as accepted,
+	# and block nothing -- the module commits 0 rules.
+	option app_block_enabled '1'
+
 	option dpi_enabled '0'
 
 	# NFLOG group for the classification mirror rule. MUST differ from

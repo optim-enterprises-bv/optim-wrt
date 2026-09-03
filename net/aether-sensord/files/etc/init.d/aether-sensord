@@ -200,6 +200,7 @@ start_service() {
 	config_get sense_max_batches main sense_max_batches 32
 
 	# Classification is consented separately again; see the config file.
+	config_get_bool app_block_enabled main app_block_enabled 1
 	config_get_bool dpi_enabled  main dpi_enabled  0
 	config_get dpi_group         main dpi_group         6
 	config_get dpi_max_flows     main dpi_max_flows     4096
@@ -239,6 +240,24 @@ start_service() {
 		set -- "$@" -R "$canary_spool"
 	fi
 	[ -n "$serial" ] && set -- "$@" -I "$serial"
+
+	# Application blocking. Without -k the daemon's push_af stays 0, the
+	# compile-and-push block never runs, and app rules are structurally
+	# unreachable: the module loads, the nft set and its drop rule are
+	# installed, the policy parses and reports "N rules accepted", and
+	# aether-af commits 0 rules. Every part worked except being asked.
+	#
+	# Measured on a BPI-R4 before this line existed: an accepted BLOCK rule
+	# for a tag the signature database defines produced 0 hashes, and the
+	# daemon's own "N host patterns compiled" line never appeared because
+	# the branch that logs it was skipped.
+	#
+	# Default on. With no /etc/config/aether-policy there are no rules, so
+	# nothing is blocked either way -- defaulting off would just be another
+	# feature that ships disabled and reports success.
+	if [ "$app_block_enabled" -eq 1 ]; then
+		set -- "$@" -k
+	fi
 
 	if [ "$sense_enabled" -eq 1 ]; then
 		install_sense_rule "$sense_group" "$sense_zone"

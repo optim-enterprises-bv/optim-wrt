@@ -17,7 +17,7 @@ PKG_RELEASE:=24
 # reproducible. Feed builds use HTTPS and an immutable commit.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/ac-client.git
-PKG_SOURCE_VERSION:=67b8dd953d957722f3034d88eb4f80ee2e60df4c
+PKG_SOURCE_VERSION:=dd5d490d27f890c95116d55558be558b845935a9
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)

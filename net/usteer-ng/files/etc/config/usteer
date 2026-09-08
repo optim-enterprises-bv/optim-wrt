@@ -1,0 +1,183 @@
+config usteer
+	# OpenWrt guide: https://openwrt.org/docs/guide-user/network/wifi/usteer
+
+	# The network interface for inter-AP communication.
+	# In the Aether mesh the APs exchange steering state over the batman-adv
+	# backbone (bat0), NOT the LAN bridge — the mesh nodes are peers.
+	option 'network' 'bat0'
+
+	# Log messages to syslog (0/1)
+	option 'syslog' '1'
+
+	# Disable network communication (0/1)
+	#option local_mode '0'
+
+	# Use IPv6 for remote exchange
+	#option 'ipv6' '0'
+
+	# Minimum level of logged messages
+	# 0 = fatal
+	# 1 = info
+	# 2 = verbose
+	# 3 = some debug messages
+	# 4 = network packet information
+	# 5 = all debug messages
+	option 'debug_level' '2'
+
+	# Maximum number of neighbor reports set for a node
+	#option max_neighbor_reports 8
+
+	# Maximum amount of time (ms) a station may be blocked due to policy decisions
+	#option sta_block_timeout 30000
+
+	# Maximum amount of time (ms) a local unconnected station is tracked
+	#option local_sta_timeout 120000
+
+	# Maximum amount of time (ms) a measurement report is stored
+	#option measurement_report_timeout 120000
+
+	# Local station information update interval (ms)
+	#option local_sta_update 1000
+
+	# Maximum number of consecutive times a station may be blocked by policy
+	#option max_retry_band 5
+
+	# Maximum idle time of a station entry (ms) to be considered for policy decisions
+	#option seen_policy_timeout 30000
+
+	# Minimum number of stations delta between APs before load balancing policy is active
+	# No effect unless load_balancing_threshold is above 0
+	#option load_balancing_threshold 0
+
+	# Minimum number of stations delta between bands before band steering policy is active
+	#option band_steering_threshold 5
+
+	# Interval (ms) between sending state updates to other APs
+	#option remote_update_interval 1000
+
+	# Number of remote update intervals after which a remote-node is deleted
+	#option remote_node_timeout 10
+
+	# Allow rejecting assoc requests for steering purposes (0/1)
+	option assoc_steering 1
+
+	# Allow ignoring probe requests for steering purposes (0/1)
+	option probe_steering 1
+
+	# Minimum signal-to-noise ratio or signal level (dBm) to allow connections
+	# Related: should be equal to or higher than `min_snr` and `band_steering_min_snr`
+	#option min_connect_snr 0
+
+	# Minimum signal-to-noise ratio or signal level (dBm) to remain connected
+	# Related: should be equal to or lower than `min_connect_snr` and lower than `band_steering_min_snr`
+	#option min_snr 0
+
+	# Timeout after which a station with snr < min_snr will be kicked
+	#option min_snr_kick_delay 5000
+
+	# Timeout (ms) for which a client will not be steered after rejecting a BSS-transition-request
+	#option steer_reject_timeout 60000
+
+	# Aggressiveness of BSS-transition-request to push a station to another node (AP or band)
+	# 0 = no active transition / 1 = passive BSS-transition-request
+	# 2 = BSS-transition-request with disassociation imminent
+	# 3 = BSS-transition-request with disassociation imminent and timer
+	# 4 = BSS-transition-request with disassociation imminent, timer and forced disassociation
+	#option aggressiveness 3
+
+	# List of MACs (lower case) to set aggressiveness per station (ff:ff:ff:ff:ff,2)
+	#list aggressiveness_mac_list ''
+
+	# Timeout (s in "1024ms") a station is requested to avoid reassociation after bss transition
+	#option reassociation_delay 30
+
+	# Timeout (in ms) after which a association following a disassociation is not seen
+	# as a roam
+	#option roam_process_timeout 5000
+
+	# Maximum signal-to-noise ratio or signal level (dBm) before attempting to trigger
+	# client scans for roaming
+	# Related: should be higher than `roam_trigger_snr`
+	#option roam_scan_snr -65
+
+	# Maximum number of client roaming scan trigger attempts
+	#option roam_scan_tries 3
+
+	# Retry scanning when roam_scan_tries is exceeded after this timeout (in ms)
+	# In case this option is set to 0, the client is kicked instead
+	#option roam_scan_timeout 0
+
+	# Minimum time (ms) between client roaming scan trigger attempts
+	#option roam_scan_interval 10000
+
+	# Maximum signal-to-noise ratio or signal level (dBm) before attempting to trigger
+	# forced client roaming
+	# Related: should be lower than `roam_scan_snr`
+	#option roam_trigger_snr 0
+
+	# Minimum time (ms) between client roaming trigger attempts
+	#option roam_trigger_interval 30000
+
+	# Timeout (ms) for client roam requests. usteer will kick the client after this times out.
+	#option roam_kick_delay 10000
+
+	# Minimum signal strength difference until AP steering policy is active
+	#option signal_diff_threshold 8
+
+	# Initial delay (ms) before responding to probe requests (to allow other APs to see packets as well)
+	#option initial_connect_delay 0
+
+	# Enable kicking client on excessive channel load (0/1)
+	#option load_kick_enabled 0
+
+	# Minimum channel load (%) before kicking clients
+	#option load_kick_threshold 75
+
+	# Minimum amount of time (ms) that channel load is above threshold before starting to kick clients
+	#option load_kick_delay 10000
+
+	# Minimum number of connected clients before kicking based on channel load
+	#option load_kick_min_clients 10
+
+	# Reason code on client kick based on channel load (default: WLAN_REASON_DISASSOC_AP_BUSY)
+	#option load_kick_reason_code 5
+
+	# Attempting to steer clients to a higher frequency-band every n ms.
+	# A value of 0 disabled band-steering.
+	option band_steering_interval 30000
+
+	# Minimal SNR or absolute signal a device has to maintain over band_steering_interval to be
+	# steered to a higher frequency band
+	# Related: should be above `min_connect_snr` and `min_snr`
+	#option band_steering_min_snr -60
+
+	# SNR difference that the signal must be better compared to signal was on connection to node.
+	# Avoids conflicts between roaming and band-steering policies.
+	# A value of 0 disables threshold.
+	#option band_steering_signal_threshold 5
+
+	# Interval (ms) the device is sent a link-measurement request to help assess
+	# the bi-directional link quality. Setting the interval to 0 disables link-measurements.
+	#option link_measurement_interval 30000
+
+	# Script to run after bringing up a node
+	#option node_up_script ''
+
+	# Message types to include in log
+	# Available types:
+	# - probe_req_accept
+	# - probe_req_deny
+	# - auth_req_accept
+	# - auth_req_deny
+	# - assoc_req_accept
+	# - assoc_req_deny
+	# - load_kick_trigger
+	# - load_kick_reset
+	# - load_kick_min_clients
+	# - load_kick_no_client
+	# - load_kick_client
+	# - signal_kick
+	#list event_log_types ''
+
+	# List of SSIDs to enable steering on
+	list ssid_list 'AetherM1'

@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ac-client
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=35
+PKG_RELEASE:=36
 
 # Track optim-enterprises-bv/ac-client over HTTPS at a pinned commit. The
 # in-repo package Makefile fetches over an SSH remote
@@ -17,7 +17,7 @@ PKG_RELEASE:=35
 # reproducible. Feed builds use HTTPS and an immutable commit.
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/optim-enterprises-bv/ac-client.git
-PKG_SOURCE_VERSION:=5628252eb610361a94b00ff4349e0b0f85e23aaf
+PKG_SOURCE_VERSION:=132c20aacf50911d3e3ecb5fb61033c400b3876c
 PKG_MIRROR_HASH:=skip
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
